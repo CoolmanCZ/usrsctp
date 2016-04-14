@@ -5,7 +5,7 @@ This fork is used to build usrsctp library using MINGW compiler.
 ```
 mkdir build
 cd build
-cmake -DCMAKE_TOOLCHAIN_FILE=./toolchain-mingw32.cmake ..
+cmake -DCMAKE_TOOLCHAIN_FILE=../toolchain-mingw32.cmake ..
 make
 ```
 
