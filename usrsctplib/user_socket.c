@@ -2897,7 +2897,7 @@ sctp_userspace_ip_output(int *result, struct mbuf *o_pak,
 	struct sockaddr_in dst;
 #if defined (__Userspace_os_Windows)
 	WSAMSG win_msg_hdr;
-	int win_sent_len;
+	LPDWORD win_sent_len;
 	WSABUF send_iovec[MAXLEN_MBUF_CHAIN];
 	WSABUF winbuf;
 #else
@@ -3052,7 +3052,7 @@ void sctp_userspace_ip6_output(int *result, struct mbuf *o_pak,
 	struct sockaddr_in6 dst;
 #if defined (__Userspace_os_Windows)
 	WSAMSG win_msg_hdr;
-	int win_sent_len;
+	LPDWORD win_sent_len;
 	WSABUF send_iovec[MAXLEN_MBUF_CHAIN];
 	WSABUF winbuf;
 #else
@@ -3242,7 +3242,7 @@ usrsctp_dumppacket(const void *buf, size_t len, int outbound)
 {
 	size_t i, pos;
 	char *dump_buf, *packet;
-#ifdef _WIN32
+#if defined (_WIN32) && !defined (__MINGW32__)
 	struct timeb tb;
 	struct tm t;
 #else
@@ -3258,7 +3258,7 @@ usrsctp_dumppacket(const void *buf, size_t len, int outbound)
 		return (NULL);
 	}
 	pos = 0;
-#ifdef _WIN32
+#if defined (_WIN32) && !defined (__MINGW32__)
 	ftime(&tb);
 	localtime_s(&t, &tb.time);
 	_snprintf_s(dump_buf, PREAMBLE_LENGTH + 1, PREAMBLE_LENGTH, PREAMBLE_FORMAT,

@@ -38,8 +38,8 @@
 #include <sys/types.h>
 #ifdef _WIN32
 #define _CRT_SECURE_NO_WARNINGS
-#include <WinSock2.h>
-#include <WS2tcpip.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include <crtdbg.h>
 #else
 #include <sys/socket.h>
@@ -56,6 +56,10 @@
 #include <string.h>
 #include <errno.h>
 #include <usrsctp.h>
+
+#if !defined(HAVE_INET_NTOP) || !defined(HAVE_INET_PTON)
+#include "inet_functions.h"
+#endif
 
 #define LINE_LENGTH (1024)
 #define BUFFER_SIZE (1<<16)
@@ -1426,7 +1430,7 @@ main(int argc, char *argv[])
 	unlock_peer_connection(&peer_connection);
 
 	for (;;) {
-#ifdef _WIN32
+#if defined (_WIN32) && !defined (__MINGW32__)
 		if (gets_s(line, LINE_LENGTH) == NULL) {
 #else
 		if (fgets(line, LINE_LENGTH, stdin) == NULL) {

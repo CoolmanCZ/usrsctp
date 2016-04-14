@@ -113,6 +113,8 @@ option(LINK_STATIC "Link static" 0)
 # xxx enable W32 support for shared lib ...
 if (LINK_STATIC OR WIN32)
 	set(LINK_STATIC "usrsctp-static")
+elseif (MINGW)
+	set(LINK_STATIC "usrsctp -lws2_32 -liphlpapi")
 else()
 	set(LINK_STATIC "usrsctp")
 endif()
@@ -150,6 +152,39 @@ FIND_PACKAGE(Threads)
 
 
 #################################################
+# Create inet_ntop and inet_pton library
+#################################################
+
+check_function_exists ( "inet_ntop" HAVE_INET_NTOP )
+
+if ( HAVE_INET_NTOP  )
+    message ( STATUS "HAVE_INET_NTOP - found" )
+    add_definitions ( -DHAVE_INET_NTOP )
+    set ( INET_NTOP "" )
+else()
+    message ( STATUS "HAVE_INET_NTOP - not found" )
+    set ( INET_NTOP "inet_ntop.c" )
+endif()
+
+check_function_exists ( "inet_pton" HAVE_INET_PTON )
+
+if ( HAVE_INET_PTON )
+    message ( STATUS "HAVE_INET_PTON - found" )
+    add_definitions ( -DHAVE_INET_PTON )
+    set ( INET_PTON "" )
+else()
+    message ( STATUS "HAVE_INET_PTON - not found" )
+    set ( INET_PTON "inet_pton.c" )
+endif()
+
+set ( LIB_COMMON_INET "" )
+if ( (NOT HAVE_INET_PTON ) OR (NOT HAVE_INET_NTOP) )
+    set ( LIB_COMMON_INET "common_inet" )
+    add_library ( ${LIB_COMMON_INET} ${INET_NTOP} ${INET_PTON} )
+endif()
+
+
+#################################################
 # PROGRAMS
 #################################################
 
@@ -172,7 +207,7 @@ SET (check_PROGRAMS
 IF ("x${CMAKE_C_COMPILER_ID}" STREQUAL "xClang" OR "x${CMAKE_C_COMPILER_ID}" STREQUAL "xGNU")
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pedantic -Wall -std=c99")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic -Wall -std=c99")
-	if (WERROR)
+	if (WERROR AND NOT MINGW)
 		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
 	endif()
@@ -199,6 +234,7 @@ FOREACH (source_file ${check_PROGRAMS})
 	)
 
 	TARGET_LINK_LIBRARIES (${source_file_we}
+                ${LIB_COMMON_INET}
 		${LINK_STATIC}
 		${CMAKE_THREAD_LIBS_INIT}
 	)

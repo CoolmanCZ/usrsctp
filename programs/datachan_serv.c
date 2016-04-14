@@ -53,6 +53,10 @@
 
 #include "datachan.h"
 
+#if !defined(HAVE_INET_NTOP) || !defined(HAVE_INET_PTON)
+#include "inet_functions.h"
+#endif
+
 #define SIZEOF_ARRAY(x) (sizeof(x)/sizeof((x)[0]))
 
 #define MAX_INPUT_LINE 1024
@@ -60,7 +64,7 @@
 #define INVALID_STREAM 0xFFFF
 
 struct {
-  int8_t   pending;
+  int      pending;
   uint8_t  channel_type;
   uint16_t flags;
   uint16_t reverse;

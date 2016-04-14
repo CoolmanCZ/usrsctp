@@ -50,6 +50,10 @@
 #endif
 #include <usrsctp.h>
 
+#if !defined(HAVE_INET_NTOP) || !defined(HAVE_INET_PTON)
+#include "inet_functions.h"
+#endif
+
 #define MAX_PACKET_SIZE (1<<16)
 #define LINE_LENGTH 80
 #define DISCARD_PPID 39
@@ -483,7 +487,7 @@ main(int argc, char *argv[])
 		perror("usrsctp_connect");
 	}
 	for (;;) {
-#ifdef _WIN32
+#if defined (_WIN32) && !defined (__MINGW32__)
 		if (gets_s(line, LINE_LENGTH) == NULL) {
 #else
 		if (fgets(line, LINE_LENGTH, stdin) == NULL) {

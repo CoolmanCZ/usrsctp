@@ -31,8 +31,8 @@
 
 #include <sys/types.h>
 #ifdef _WIN32
-#include <WinSock2.h>
-#include <WS2tcpip.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include <stdlib.h>
 #include <crtdbg.h>
 #include <sys/timeb.h>
@@ -54,6 +54,10 @@
 #include <getopt.h>
 #endif
 #include <usrsctp.h>
+
+#if !defined(HAVE_INET_NTOP) || !defined(HAVE_INET_PTON)
+#include "inet_functions.h"
+#endif
 
 /* global for the send callback, but used in kernel version as well */
 static unsigned long number_of_messages;

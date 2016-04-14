@@ -45,8 +45,8 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
-#include <Mswsock.h>
-#include <Windows.h>
+#include <mswsock.h>
+#include <windows.h>
 #include "user_environment.h"
 typedef CRITICAL_SECTION userland_mutex_t;
 #if WINVER < 0x0600
@@ -412,7 +412,7 @@ struct ifreq {
 
 #endif
 
-#if defined(__Userspace_os_Windows)
+#if !defined(__MINGW32__) && defined(__Userspace_os_Windows)
 int Win_getifaddrs(struct ifaddrs**);
 #define getifaddrs(interfaces)  (int)Win_getifaddrs(interfaces)
 int win_if_nametoindex(const char *);
