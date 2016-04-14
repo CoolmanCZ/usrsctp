@@ -2897,7 +2897,7 @@ sctp_userspace_ip_output(int *result, struct mbuf *o_pak,
 	struct sockaddr_in dst;
 #if defined (__Userspace_os_Windows)
 	WSAMSG win_msg_hdr;
-	LPDWORD win_sent_len;
+	int win_sent_len;
 	WSABUF send_iovec[MAXLEN_MBUF_CHAIN];
 	WSABUF winbuf;
 #else
@@ -3052,7 +3052,7 @@ void sctp_userspace_ip6_output(int *result, struct mbuf *o_pak,
 	struct sockaddr_in6 dst;
 #if defined (__Userspace_os_Windows)
 	WSAMSG win_msg_hdr;
-	LPDWORD win_sent_len;
+	int win_sent_len;
 	WSABUF send_iovec[MAXLEN_MBUF_CHAIN];
 	WSABUF winbuf;
 #else

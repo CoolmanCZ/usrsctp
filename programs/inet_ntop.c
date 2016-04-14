@@ -186,5 +186,4 @@ static char *inet_ntop6(const u_char * src, char *dst, socklen_t size)
     strcpy(dst, tmp);
     return (dst);
 }
-
 /*! \file */

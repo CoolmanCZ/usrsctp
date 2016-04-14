@@ -155,9 +155,15 @@ FIND_PACKAGE(Threads)
 # Create inet_ntop and inet_pton library
 #################################################
 
-check_function_exists ( "inet_ntop" HAVE_INET_NTOP )
+if ( MSVC )
+    set ( HAVE_INET_NTOP 1 )
+    set ( HAVE_INET_PTON 1 )
+else()
+    check_function_exists ( "inet_ntop" HAVE_INET_NTOP )
+    check_function_exists ( "inet_pton" HAVE_INET_PTON )
+endif()
 
-if ( HAVE_INET_NTOP  )
+if ( HAVE_INET_NTOP )
     message ( STATUS "HAVE_INET_NTOP - found" )
     add_definitions ( -DHAVE_INET_NTOP )
     set ( INET_NTOP "" )
@@ -166,7 +172,6 @@ else()
     set ( INET_NTOP "inet_ntop.c" )
 endif()
 
-check_function_exists ( "inet_pton" HAVE_INET_PTON )
 
 if ( HAVE_INET_PTON )
     message ( STATUS "HAVE_INET_PTON - found" )
@@ -201,6 +206,8 @@ SET (check_PROGRAMS
 	rtcweb.c
 	test_libmgmt.c
 	tsctp.c
+        rfc-sctp-client.c
+        rfc-sctp-server.c
 )
 
 # SETTINGS FOR UNIX COMPILER

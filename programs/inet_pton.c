@@ -215,5 +215,4 @@ static int inet_pton6(const char *src, u_char * dst)
     memcpy(dst, tmp, NS_IN6ADDRSZ);
     return (1);
 }
-
 /*! \file */
