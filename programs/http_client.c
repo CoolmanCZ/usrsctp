@@ -49,6 +49,10 @@
 #endif
 #include <usrsctp.h>
 
+#if !defined(HAVE_INET_NTOP) || !defined(HAVE_INET_PTON)
+#include "inet_functions.h"
+#endif
+
 int done = 0;
 static const char *request_prefix = "GET";
 static const char *request_postfix = "HTTP/1.0\r\nUser-agent: libusrsctp\r\nConnection: close\r\n\r\n";
