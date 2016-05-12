@@ -95,7 +95,11 @@ receive_cb(struct socket *sock, union sctp_sockstore addr, void *data,
 				port = 0;
 				break;
 			}
+#ifdef __MINGW32__
+			printf("Msg of length %d received from %s:%u on stream %d with SSN %u and TSN %u, PPID %lu, context %u.\n",
+#else
 			printf("Msg of length %d received from %s:%u on stream %d with SSN %u and TSN %u, PPID %u, context %u.\n",
+#endif
 			       (int)datalen,
 			       name,
 			       port,
@@ -231,11 +235,20 @@ main(int argc, char *argv[])
 			                  &infolen, &infotype, &flags);
 			if (n > 0) {
 				if (flags & MSG_NOTIFICATION) {
+#ifdef __MINGW32__
+					printf("Notification of length %lu received.\n", (unsigned long)n);
+#else
 					printf("Notification of length %llu received.\n", (unsigned long long)n);
+#endif
 				} else {
 					if (infotype == SCTP_RECVV_RCVINFO) {
+#ifdef __MINGW32__
+						printf("Msg of length %lu received from %s:%u on stream %d with SSN %u and TSN %u, PPID %lu, context %u, complete %d.\n",
+						        (unsigned long)n,
+#else
 						printf("Msg of length %llu received from %s:%u on stream %d with SSN %u and TSN %u, PPID %u, context %u, complete %d.\n",
 						        (unsigned long long)n,
+#endif
 						        inet_ntop(AF_INET6, &addr.sin6_addr, name, INET6_ADDRSTRLEN), ntohs(addr.sin6_port),
 						        rcv_info.rcv_sid,
 						        rcv_info.rcv_ssn,
@@ -259,8 +272,11 @@ main(int argc, char *argv[])
 							}
 						}
 					} else {
-						printf("Msg of length %llu received from %s:%u, complete %d.\n",
-						        (unsigned long long)n,
+#ifdef __MINGW32__
+						printf("Msg of length %lu received from %s:%u, complete %d.\n", (unsigned long)n,
+#else
+						printf("Msg of length %llu received from %s:%u, complete %d.\n", (unsigned long long)n,
+#endif
 						        inet_ntop(AF_INET6, &addr.sin6_addr, name, INET6_ADDRSTRLEN), ntohs(addr.sin6_port),
 						        (flags & MSG_EOR) ? 1 : 0);
 					}

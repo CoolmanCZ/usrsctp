@@ -257,7 +257,11 @@ int main(void)
                     printf(", ssn=%u", info.rcv_ssn);
                 }
                 printf(", tsn=%u", info.rcv_tsn);
+#ifdef __MINGW32__
+                printf(", ppid=%lu.\n", ntohl(info.rcv_ppid));
+#else
                 printf(", ppid=%u.\n", ntohl(info.rcv_ppid));
+#endif
                 break;
             case SCTP_RECVV_NOINFO:
             case SCTP_RECVV_NXTINFO:

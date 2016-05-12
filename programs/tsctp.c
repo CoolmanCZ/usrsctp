@@ -143,11 +143,6 @@ handle_connection(void *arg)
 	ssize_t n;
 	unsigned long long sum = 0, first_length = 0;
 	char *buf;
-#ifdef _WIN32
-	HANDLE tid;
-#else
-	pthread_t tid;
-#endif
 	struct socket *conn_sock;
 	struct timeval start_time, now, diff_time;
 	double seconds;
@@ -165,9 +160,8 @@ handle_connection(void *arg)
 	socklen_t infolen = sizeof(struct sctp_recvv_rn);
 
 	conn_sock = *(struct socket **)arg;
-#ifdef _WIN32
-	tid = GetCurrentThread();
-#else
+#ifndef _WIN32
+	pthread_t tid;
 	tid = pthread_self();
 	pthread_detach(tid);
 #endif
@@ -217,8 +211,13 @@ handle_connection(void *arg)
 	gettimeofday(&now, NULL);
 	timersub(&now, &start_time, &diff_time);
 	seconds = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
+#ifdef __MINGW32__
+	printf("%lu, %lu, %lu, %lu, %lu, %f, %f\n",
+	        (unsigned long)first_length, messages, recv_calls, notifications, (unsigned long)sum, seconds, (double)first_length * (double)messages / seconds);
+#else
 	printf("%llu, %lu, %lu, %lu, %llu, %f, %f\n",
 	        first_length, messages, recv_calls, notifications, sum, seconds, (double)first_length * (double)messages / seconds);
+#endif
 	fflush(stdout);
 	usrsctp_close(conn_sock);
 	free(buf);
@@ -313,8 +312,13 @@ server_receive_cb(struct socket *sock, union sctp_sockstore addr, void *data,
 		gettimeofday(&now, NULL);
 		timersub(&now, &start_time, &diff_time);
 		seconds = diff_time.tv_sec + (double)diff_time.tv_usec/1000000.0;
+#ifdef __MINGW32__
+		printf("%u, %lu, %lu, %f, %f\n",
+			first_length, messages, (unsigned long)sum, seconds, (double)first_length * (double)messages / seconds);
+#else
 		printf("%u, %lu, %llu, %f, %f\n",
 			first_length, messages, sum, seconds, (double)first_length * (double)messages / seconds);
+#endif
 		usrsctp_close(sock);
 		first_length = 0;
 		sum = 0;
@@ -668,6 +672,9 @@ int main(int argc, char **argv)
 				}
 #ifdef _WIN32
 				tid = CreateThread(NULL, 0, &handle_connection, (void *)conn_sock, 0, NULL);
+                                if (tid == NULL) {
+                                    perror("CreateThread");
+                                }
 #else
 				pthread_create(&tid, NULL, &handle_connection, (void *)conn_sock);
 #endif

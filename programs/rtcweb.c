@@ -766,8 +766,8 @@ handle_data_message(struct peer_connection *pc,
 	} else {
 		/* Assuming DATA_CHANNEL_PPID_DOMSTRING */
 		/* XXX: Protect for non 0 terminated buffer */
-		printf("Message received of length %zu on channel with id %d: %.*s\n",
-		       length, channel->id, (int)length, buffer);
+		printf("Message received of length %lu on channel with id %d: %.*s\n",
+		       (unsigned long) length, channel->id, (int)length, buffer);
 	}
 	return;
 }
@@ -820,8 +820,8 @@ handle_message(struct peer_connection *pc, char *buffer, size_t length, uint32_t
 		handle_data_message(pc, buffer, length, i_stream);
 		break;
 	default:
-		printf("Message of length %zu, PPID %u on stream %u received.\n",
-		       length, ppid, i_stream);
+		printf("Message of length %lu, PPID %u on stream %u received.\n",
+		       (unsigned long) length, ppid, i_stream);
 		break;
 	}
 }
@@ -1107,7 +1107,11 @@ handle_send_failed_event(struct sctp_send_failed_event *ssfe)
 	if (ssfe->ssfe_flags & ~(SCTP_DATA_SENT | SCTP_DATA_UNSENT)) {
 		printf("(flags = %x) ", ssfe->ssfe_flags);
 	}
-	printf("message with PPID = %d, SID = %d, flags: 0x%04x due to error = 0x%08x",
+#ifdef __MINGW32__
+	printf("message with PPID = %lu, SID = %d, flags: 0x%04x due to error = 0x%08x",
+#else
+	printf("message with PPID = %u, SID = %d, flags: 0x%04x due to error = 0x%08x",
+#endif
 	       ntohl(ssfe->ssfe_info.snd_ppid), ssfe->ssfe_info.snd_sid,
 	       ssfe->ssfe_info.snd_flags, ssfe->ssfe_error);
 	n = ssfe->ssfe_length - sizeof(struct sctp_send_failed_event);
