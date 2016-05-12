@@ -455,9 +455,7 @@ recv_function_raw6(void *arg)
 #else
 	WSABUF recv_iovec[MAXLEN_MBUF_CHAIN];
 	int nResult, m_ErrorCode;
-	DWORD flags;
 	struct sockaddr_in6 from;
-	int fromlen;
 	GUID WSARecvMsg_GUID = WSAID_WSARECVMSG;
 	LPFN_WSARECVMSG WSARecvMsg;
 	WSACMSGHDR *cmsgptr;
@@ -506,9 +504,7 @@ recv_function_raw6(void *arg)
 		}
 		to_fill = 0;
 #if defined(__Userspace_os_Windows)
-		flags = 0;
 		ncounter = 0;
-		fromlen = sizeof(struct sockaddr_in6);
 		bzero((void *)&from, sizeof(struct sockaddr_in6));
 		nResult = WSAIoctl(SCTP_BASE_VAR(userspace_rawsctp6), SIO_GET_EXTENSION_FUNCTION_POINTER,
 		                   &WSARecvMsg_GUID, sizeof WSARecvMsg_GUID,
