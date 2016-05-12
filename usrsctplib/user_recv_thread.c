@@ -472,7 +472,12 @@ recv_function_raw6(void *arg)
 	  to_fill indicates this amount. */
 	int to_fill = MAXLEN_MBUF_CHAIN;
 	/* iovlen is the size of each mbuf in the chain */
-	int i, n, ncounter = 0;
+	int i, n;
+#if defined(__MINGW32__)
+	DWORD ncounter = 0;
+#else
+	int ncounter = 0;
+#endif
 #if !defined(SCTP_WITH_NO_CSUM)
 	int compute_crc = 1;
 #endif
@@ -645,7 +650,7 @@ recv_function_udp(void *arg)
 	  to_fill indicates this amount. */
 	int to_fill = MAXLEN_MBUF_CHAIN;
 	/* iovlen is the size of each mbuf in the chain */
-	int i, n, ncounter, offset;
+	int i, n, offset;
 	int iovlen = MCLBYTES;
 	int want_ext = (iovlen > MLEN)? 1 : 0;
 	int want_header = 0;
@@ -653,6 +658,11 @@ recv_function_udp(void *arg)
 	uint16_t port;
 	struct sctp_chunkhdr *ch;
 	struct sockaddr_in src, dst;
+#if defined(__MINGW32__)
+        DWORD ncounter;
+#else
+        int ncounter;
+#endif
 #if defined(IP_PKTINFO)
 	char cmsgbuf[CMSG_SPACE(sizeof(struct in_pktinfo))];
 #else
@@ -857,7 +867,7 @@ recv_function_udp6(void *arg)
 	  to_fill indicates this amount. */
 	int to_fill = MAXLEN_MBUF_CHAIN;
 	/* iovlen is the size of each mbuf in the chain */
-	int i, n, ncounter, offset;
+	int i, n, offset;
 	int iovlen = MCLBYTES;
 	int want_ext = (iovlen > MLEN)? 1 : 0;
 	int want_header = 0;
@@ -866,6 +876,11 @@ recv_function_udp6(void *arg)
 	uint16_t port;
 	struct sctp_chunkhdr *ch;
 	char cmsgbuf[CMSG_SPACE(sizeof (struct in6_pktinfo))];
+#if defined(__MINGW32__)
+        DWORD ncounter;
+#else
+        int ncounter;
+#endif
 #if !defined(SCTP_WITH_NO_CSUM)
 	int compute_crc = 1;
 #endif
