@@ -50,6 +50,10 @@
 #endif
 #include <usrsctp.h>
 
+#if !defined(HAVE_INET_NTOP) || !defined(HAVE_INET_PTON)
+#include "inet_functions.h"
+#endif
+
 #define MAX_PACKET_SIZE (1<<16)
 
 #ifdef _WIN32
