@@ -311,6 +311,10 @@ typedef pthread_t userland_thread_t;
 
 /*#include <packon.h>
 #pragma pack(push, 1)*/
+#if defined (__MINGW32__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 struct ip {
 	u_char    ip_hl:4, ip_v:4;
 	u_char    ip_tos;
@@ -326,6 +330,9 @@ struct ip {
 	u_short   ip_sum;
 	struct in_addr ip_src, ip_dst;
 };
+#if defined (__MINGW32__)
+#pragma GCC diagnostic pop
+#endif
 
 struct ifaddrs {
 	struct ifaddrs  *ifa_next;
