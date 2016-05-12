@@ -2903,16 +2903,15 @@ sctp_userspace_ip_output(int *result, struct mbuf *o_pak,
 	WSAMSG win_msg_hdr;
 	WSABUF send_iovec[MAXLEN_MBUF_CHAIN];
 	WSABUF winbuf;
-#else
-	struct iovec send_iovec[MAXLEN_MBUF_CHAIN];
-	struct msghdr msg_hdr;
-#endif
 #if defined(__MINGW32__)
 	DWORD win_sent_len;
 #else
 	int win_sent_len;
 #endif
-
+#else
+	struct iovec send_iovec[MAXLEN_MBUF_CHAIN];
+	struct msghdr msg_hdr;
+#endif
 	int use_udp_tunneling;
 
 	*result = 0;
@@ -3063,16 +3062,15 @@ void sctp_userspace_ip6_output(int *result, struct mbuf *o_pak,
 	WSAMSG win_msg_hdr;
 	WSABUF send_iovec[MAXLEN_MBUF_CHAIN];
 	WSABUF winbuf;
-#else
-	struct iovec send_iovec[MAXLEN_MBUF_CHAIN];
-	struct msghdr msg_hdr;
-#endif
 #if defined(__MINGW32__)
 	DWORD win_sent_len;
 #else
 	int win_sent_len;
 #endif
-
+#else
+	struct iovec send_iovec[MAXLEN_MBUF_CHAIN];
+	struct msghdr msg_hdr;
+#endif
 	int use_udp_tunneling;
 
 	*result = 0;
