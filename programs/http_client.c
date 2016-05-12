@@ -104,6 +104,11 @@ main(int argc, char *argv[])
 	struct sctp_udpencaps encaps;
 	int result;
 
+        if (argc < 3) {
+            printf("Usage: %s remote_addr remote_port [local_port] [local_encaps_port] [remote_encaps_port] [uri]\n", argv[0]);
+            exit(EXIT_FAILURE);
+        }
+
 	result = 0;
 	if (argc > 4) {
 		usrsctp_init(atoi(argv[4]), NULL, debug_printf);

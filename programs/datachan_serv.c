@@ -29,7 +29,7 @@
  */
 
 /*
- * Usage: daytime_server [local_encaps_port] [remote_encaps_port]
+ * Usage: datachan_server [local_encaps_port] [remote_encaps_port]
  */
 
 #ifdef _WIN32

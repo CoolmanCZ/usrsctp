@@ -29,7 +29,7 @@
  */
 
 /*
- * Usage: discard_server [local_encaps_port] [remote_encaps_port]
+ * Usage: echo_server [local_encaps_port] [remote_encaps_port]
  */
 
 #ifdef _WIN32
