@@ -216,7 +216,7 @@ Win_getifaddrs(struct ifaddrs** interfaces)
 		goto cleanup;
 	}
 	/* Enumerate through each returned adapter and save its information */
-	for (pAdapt = pAdapterAddrs, count; pAdapt; pAdapt = pAdapt->Next, count++) {
+	for (pAdapt = pAdapterAddrs, count = 0; pAdapt; pAdapt = pAdapt->Next, count++) {
 		addr = (struct sockaddr_in *)malloc(sizeof(struct sockaddr_in));
 		ifa = (struct ifaddrs *)malloc(sizeof(struct ifaddrs));
 		if ((addr == NULL) || (ifa == NULL)) {
@@ -255,7 +255,7 @@ Win_getifaddrs(struct ifaddrs** interfaces)
 		goto cleanup;
 	}
 	/* Enumerate through each returned adapter and save its information */
-	for (pAdapt = pAdapterAddrs, count; pAdapt; pAdapt = pAdapt->Next, count++) {
+	for (pAdapt = pAdapterAddrs, count = 0; pAdapt; pAdapt = pAdapt->Next, count++) {
 		addr6 = (struct sockaddr_in6 *)malloc(sizeof(struct sockaddr_in6));
 		ifa = (struct ifaddrs *)malloc(sizeof(struct ifaddrs));
 		if ((addr6 == NULL) || (ifa == NULL)) {

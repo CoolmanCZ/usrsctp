@@ -103,7 +103,11 @@ typedef HANDLE userland_thread_t;
 #define n_time     unsigned __int32
 #define sa_family_t unsigned __int8
 #define ssize_t    __int64
+#ifdef __MINGW32__
+#define __func__	__extension__ __FUNCTION__
+#else
 #define __func__	__FUNCTION__
+#endif
 
 #ifndef EWOULDBLOCK
 #define EWOULDBLOCK             WSAEWOULDBLOCK
