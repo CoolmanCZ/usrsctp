@@ -1,14 +1,3 @@
-#MINGW
-This fork is used to build usrsctp library using MINGW compiler.
-
-##build:
-```
-mkdir build
-cd build
-cmake -DCMAKE_TOOLCHAIN_FILE=../toolchain-mingw32.cmake ..
-make
-```
-
 # usrsctp
 
 This is a userland SCTP stack supporting FreeBSD, Linux, Mac OS X and Windows.
