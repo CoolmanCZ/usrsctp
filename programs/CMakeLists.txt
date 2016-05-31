@@ -178,6 +178,7 @@ endif()
 if ( (NOT HAVE_INET_PTON ) OR (NOT HAVE_INET_NTOP) )
     set ( LIB_COMMON_INET "common_inet" )
     add_library ( ${LIB_COMMON_INET} ${INET_NTOP} ${INET_PTON} )
+    list ( APPEND LINK_STATIC ${LIB_COMMON_INET} )
 endif()
 
 
@@ -234,7 +235,6 @@ FOREACH (source_file ${check_PROGRAMS})
 	)
 
 	TARGET_LINK_LIBRARIES (${source_file_we}
-                ${LIB_COMMON_INET}
 		${LINK_STATIC}
 		${CMAKE_THREAD_LIBS_INIT}
 	)
