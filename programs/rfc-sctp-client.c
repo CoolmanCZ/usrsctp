@@ -144,8 +144,7 @@ int main(void)
 #endif
     addr.sin_family = AF_INET;
     addr.sin_port = htons(PORT);
-	inet_pton(AF_INET, ADDR, &addr.sin_addr);
-	//addr.sin_addr.s_addr = inet_addr(ADDR);
+    inet_pton(AF_INET, ADDR, &addr.sin_addr);
 
     if (usrsctp_connect(sd, (struct sockaddr *)&addr, sizeof(struct sockaddr_in)) < 0) {
         perror("connect");
