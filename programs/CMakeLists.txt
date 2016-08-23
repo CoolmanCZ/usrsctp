@@ -118,10 +118,12 @@ option(LINK_STATIC "Link static" 0)
 # xxx enable W32 support for shared lib ...
 if (LINK_STATIC OR WIN32)
 	set(LINK_STATIC "usrsctp-static")
-elseif (MINGW)
-	set(LINK_STATIC "usrsctp -lws2_32 -liphlpapi")
 else()
 	set(LINK_STATIC "usrsctp")
+endif()
+
+if (MINGW)
+	set(LINK_STATIC ${LINK_STATIC} ws2_32 iphlpapi)
 endif()
 
 option(WERROR "Warning as error" ON)
@@ -164,7 +166,7 @@ if ( HAVE_INET_NTOP )
     add_definitions ( -DHAVE_INET_NTOP )
 else()
     message ( STATUS "HAVE_INET_NTOP - not found" )
-    set ( INET_NTOP "inet_ntop.c" )
+    set ( INET_NTOP "mingw/inet_ntop.c" )
 endif()
 
 if ( HAVE_INET_PTON )
@@ -172,7 +174,7 @@ if ( HAVE_INET_PTON )
     add_definitions ( -DHAVE_INET_PTON )
 else()
     message ( STATUS "HAVE_INET_PTON - not found" )
-    set ( INET_PTON "inet_pton.c" )
+    set ( INET_PTON "mingw/inet_pton.c" )
 endif()
 
 if ( (NOT HAVE_INET_PTON ) OR (NOT HAVE_INET_NTOP) )
@@ -200,8 +202,6 @@ SET (check_PROGRAMS
 	rtcweb.c
 	test_libmgmt.c
 	tsctp.c
-        rfc-sctp-client.c
-        rfc-sctp-server.c
 )
 
 # SETTINGS FOR UNIX COMPILER
