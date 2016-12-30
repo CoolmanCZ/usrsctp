@@ -183,6 +183,7 @@ set(CHECK_PROGRAMS
     http_client.c
     rtcweb.c
     test_libmgmt.c
+    test_timer.c
     tsctp.c
 )
 
