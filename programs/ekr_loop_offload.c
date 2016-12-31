@@ -95,11 +95,15 @@ handle_packets(void *arg)
 				if (received_crc32c == computed_crc32c) {
 					usrsctp_conninput(fdp, buffer, (size_t)length, 0);
 				} else {
+#ifdef __MINGW32__
+					fprintf(stderr, "Wrong CRC32c: expected %08lx received %08lx\n",
+#else
 					fprintf(stderr, "Wrong CRC32c: expected %08x received %08x\n",
+#endif
 					        ntohl(computed_crc32c), ntohl(received_crc32c));
 				}
 			} else {
-				fprintf(stderr, "Packet too short: length %zu", (size_t)length);
+				fprintf(stderr, "Packet too short: length %lu", (unsigned long) length);
 			}
 		}
 	}
@@ -153,7 +157,11 @@ receive_cb(struct socket *sock, union sctp_sockstore addr, void *data,
 	printf("Message %p received on sock = %p.\n", data, (void *)sock);
 	if (data) {
 		if ((flags & MSG_NOTIFICATION) == 0) {
+#ifdef __MINGW32__
+			printf("Messsage of length %d received via %p:%u on stream %d with SSN %u and TSN %u, PPID %lu, context %u, flags %x.\n",
+#else
 			printf("Messsage of length %d received via %p:%u on stream %d with SSN %u and TSN %u, PPID %u, context %u, flags %x.\n",
+#endif
 			       (int)datalen,
 			       addr.sconn.sconn_addr,
 			       ntohs(addr.sconn.sconn_port),
