@@ -132,6 +132,8 @@ endif ()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     add_definitions(-U__FreeBSD__)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-address-of-packed-member")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-address-of-packed-member")
 endif ()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -139,6 +141,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     add_definitions(-D__APPLE_USE_RFC_2292)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-deprecated-declarations")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-address-of-packed-member")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-address-of-packed-member")
 endif ()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "DragonFly")
