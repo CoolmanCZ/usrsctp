@@ -172,7 +172,6 @@ endif()
 
 set(CHECK_PROGRAMS
     client.c
-    datachan_serv.c
     daytime_server.c
     discard_server.c
     echo_server.c
