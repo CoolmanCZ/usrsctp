@@ -1,6 +1,6 @@
 #
 # Copyright (C) 2015-2015 Oleg Alexeenkov
-# Copyright (C) 2015-2015 Felix Weinrank
+# Copyright (C) 2015-2017 Felix Weinrank
 #
 # All rights reserved.
 #
@@ -29,86 +29,19 @@
 # SUCH DAMAGE.
 #
 
-cmake_minimum_required(VERSION 2.6)
-include_directories(../usrsctplib)
-
 
 #################################################
 # INCLUDE MODULES
 #################################################
 
-include(CheckFunctionExists)
-include(CheckStructHasMember)
 include(CheckIncludeFile)
-include(CMakePushCheckState)
-include(CheckTypeSize)
 
 
 #################################################
 # CHECK INCLUDES
 #################################################
 
-check_include_file(usrsctp.h HAVE_USRSCTP_H)
-
-
-#################################################
-# CHECK STRUCT MEMBERS
-#################################################
-
-check_struct_has_member("struct sockaddr" "sa_len" "sys/types.h;sys/socket.h" HAVE_SA_LEN)
-if (HAVE_SA_LEN)
-    add_definitions(-DHAVE_SA_LEN)
-endif ()
-
-check_struct_has_member("struct sockaddr_in" "sin_len" "sys/types.h;netinet/in.h" HAVE_SIN_LEN)
-if (HAVE_SIN_LEN)
-    add_definitions(-DHAVE_SIN_LEN)
-endif ()
-
-check_struct_has_member("struct sockaddr_in6" "sin6_len" "sys/types.h;netinet/in.h" HAVE_SIN6_LEN)
-if (HAVE_SIN6_LEN)
-    add_definitions(-DHAVE_SIN6_LEN)
-endif ()
-
-check_struct_has_member("struct sockaddr_conn" "sconn_len" "usrsctp.h" HAVE_SCONN_LEN)
-if (HAVE_SCONN_LEN)
-    add_definitions(-DHAVE_SCONN_LEN)
-endif ()
-
-
-#################################################
-# CHECK OPTIONS
-#################################################
-
-option(SCTP_DEBUG "Provide debug information" 1)
-if (SCTP_DEBUG)
-    add_definitions(-DSCTP_DEBUG)
-endif ()
-
-option(INET "Support IPv4 " 1)
-if (INET)
-    add_definitions(-DINET)
-endif ()
-
-option(INET6 "Support IPv6 " 1)
-if (INET6)
-    add_definitions(-DINET6)
-endif ()
-
-option(LINK_STATIC "Link static" 0)
-
-# xxx enable W32 support for shared lib ...
-if (LINK_STATIC OR WIN32)
-    set(LINK_STATIC "usrsctp-static")
-else()
-    set(LINK_STATIC "usrsctp")
-endif ()
-
-if (MINGW)
-	set(LINK_STATIC ${LINK_STATIC} ws2_32 iphlpapi)
-endif()
-
-option(WERROR "Warning as error" ON)
+include_directories(${CMAKE_SOURCE_DIR}/usrsctplib)
 
 
 #################################################
@@ -139,6 +72,8 @@ if ( MSVC )
     set ( HAVE_INET_NTOP 1 )
     set ( HAVE_INET_PTON 1 )
 else()
+    include(CheckFunctionExists)
+
     check_function_exists ( "inet_ntop" HAVE_INET_NTOP )
     check_function_exists ( "inet_pton" HAVE_INET_PTON )
 endif()
@@ -162,7 +97,7 @@ endif()
 if ( (NOT HAVE_INET_PTON ) OR (NOT HAVE_INET_NTOP) )
     set ( LIB_COMMON_INET "common_inet" )
     add_library ( ${LIB_COMMON_INET} ${INET_NTOP} ${INET_PTON} )
-    list ( APPEND LINK_STATIC ${LIB_COMMON_INET} )
+    list ( APPEND PROGRAMS_LINK_LIBRARY ${LIB_COMMON_INET} )
 endif()
 
 
@@ -176,8 +111,8 @@ set(CHECK_PROGRAMS
     discard_server.c
     echo_server.c
     ekr_client.c
-    ekr_loop.c
     ekr_loop_offload.c
+    ekr_loop.c
     ekr_peer.c
     ekr_server.c
     http_client.c
@@ -187,29 +122,6 @@ set(CHECK_PROGRAMS
     tsctp.c
 )
 
-# SETTINGS FOR UNIX COMPILER
-if ("x${CMAKE_C_COMPILER_ID}" STREQUAL "xClang" OR "x${CMAKE_C_COMPILER_ID}" STREQUAL "xGNU")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pedantic -Wall -std=c99")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic -Wall -std=c99")
-    if (WERROR)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
-    endif ()
-endif ()
-
-# SETTINGS FOR VISUAL STUDIO COMPILER
-if ("x${CMAKE_C_COMPILER_ID}" STREQUAL "xMSVC")
-    if (CMAKE_C_FLAGS MATCHES "/W[0-4]")
-        string(REGEX REPLACE "/W[0-4]" "/W3" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-    else ()
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W3")
-    endif ()
-
-    if (WERROR)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /WX")
-    endif ()
-endif ()
-
 foreach (SOURCE_FILE ${CHECK_PROGRAMS})
     get_filename_component(SOURCE_FILE_WE ${SOURCE_FILE} NAME_WE)
     add_executable(
@@ -218,9 +130,7 @@ foreach (SOURCE_FILE ${CHECK_PROGRAMS})
     )
 
     target_link_libraries(${SOURCE_FILE_WE}
-        ${LINK_STATIC}
+        ${PROGRAMS_LINK_LIBRARY}
         ${CMAKE_THREAD_LIBS_INIT}
     )
-
-    add_test(${SOURCE_FILE_WE} ${SOURCE_FILE_WE})
 endforeach ()
