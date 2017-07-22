@@ -143,7 +143,7 @@ recv_function_route(void *arg)
 	sctp_userspace_set_threadname("SCTP addr mon");
 
 	while (1) {
-		bzero(rt_buffer, sizeof(rt_buffer));
+		memset(rt_buffer, 0, sizeof(rt_buffer));
 		ret = recv(SCTP_BASE_VAR(userspace_route), rt_buffer, sizeof(rt_buffer), 0);
 
 		if (ret > 0) {
@@ -295,8 +295,8 @@ recv_function_raw(void *arg)
 
 	sctp_userspace_set_threadname("SCTP/IP4 rcv");
 
-	bzero((void *)&src, sizeof(struct sockaddr_in));
-	bzero((void *)&dst, sizeof(struct sockaddr_in));
+	memset(&src, 0, sizeof(struct sockaddr_in));
+	memset(&dst, 0, sizeof(struct sockaddr_in));
 
 	recvmbuf = malloc(sizeof(struct mbuf *) * MAXLEN_MBUF_CHAIN);
 
@@ -320,7 +320,7 @@ recv_function_raw(void *arg)
 		flags = 0;
 		ncounter = 0;
 		fromlen = sizeof(struct sockaddr_in);
-		bzero((void *)&from, sizeof(struct sockaddr_in));
+		memset(&from, 0, sizeof(struct sockaddr_in));
 
 		nResult = WSARecvFrom(SCTP_BASE_VAR(userspace_rawsctp), recv_iovec, MAXLEN_MBUF_CHAIN, &ncounter, &flags, (struct sockaddr *)&from, &fromlen, NULL, NULL);
 		if (nResult != 0) {
@@ -334,7 +334,7 @@ recv_function_raw(void *arg)
 		}
 		n = ncounter;
 #else
-		bzero((void *)&msg, sizeof(struct msghdr));
+		memset(&msg, 0, sizeof(struct msghdr));
 		msg.msg_name = NULL;
 		msg.msg_namelen = 0;
 		msg.msg_iov = recv_iovec;
@@ -458,13 +458,13 @@ recv_function_raw6(void *arg)
 #else
 	WSABUF recv_iovec[MAXLEN_MBUF_CHAIN];
 	int nResult, m_ErrorCode;
+	DWORD ncounter = 0;
 	struct sockaddr_in6 from;
 	GUID WSARecvMsg_GUID = WSAID_WSARECVMSG;
 	LPFN_WSARECVMSG WSARecvMsg;
 	WSACMSGHDR *cmsgptr;
 	WSAMSG msg;
 	char ControlBuffer[1024];
-	DWORD ncounter = 0;
 #endif
 	struct sockaddr_in6 src, dst;
 	struct sctphdr *sh;
@@ -504,7 +504,7 @@ recv_function_raw6(void *arg)
 		to_fill = 0;
 #if defined(__Userspace_os_Windows)
 		ncounter = 0;
-		bzero((void *)&from, sizeof(struct sockaddr_in6));
+		memset(&from, 0, sizeof(struct sockaddr_in6));
 		nResult = WSAIoctl(SCTP_BASE_VAR(userspace_rawsctp6), SIO_GET_EXTENSION_FUNCTION_POINTER,
 		                   &WSARecvMsg_GUID, sizeof WSARecvMsg_GUID,
 		                   &WSARecvMsg, sizeof WSARecvMsg,
@@ -528,10 +528,10 @@ recv_function_raw6(void *arg)
 		}
 		n = ncounter;
 #else
-		bzero((void *)&msg, sizeof(struct msghdr));
-		bzero((void *)&src, sizeof(struct sockaddr_in6));
-		bzero((void *)&dst, sizeof(struct sockaddr_in6));
-		bzero((void *)cmsgbuf, CMSG_SPACE(sizeof (struct in6_pktinfo)));
+		memset(&msg, 0, sizeof(struct msghdr));
+		memset(&src, 0, sizeof(struct sockaddr_in6));
+		memset(&dst, 0, sizeof(struct sockaddr_in6));
+		memset(cmsgbuf, 0, CMSG_SPACE(sizeof (struct in6_pktinfo)));
 		msg.msg_name = (void *)&src;
 		msg.msg_namelen = sizeof(struct sockaddr_in6);
 		msg.msg_iov = recv_iovec;
@@ -698,13 +698,13 @@ recv_function_udp(void *arg)
 		}
 		to_fill = 0;
 #if !defined(__Userspace_os_Windows)
-		bzero((void *)&msg, sizeof(struct msghdr));
+		memset(&msg, 0, sizeof(struct msghdr));
 #else
-		bzero((void *)&msg, sizeof(WSAMSG));
+		memset(&msg, 0, sizeof(WSAMSG));
 #endif
-		bzero((void *)&src, sizeof(struct sockaddr_in));
-		bzero((void *)&dst, sizeof(struct sockaddr_in));
-		bzero((void *)cmsgbuf, sizeof(cmsgbuf));
+		memset(&src, 0, sizeof(struct sockaddr_in));
+		memset(&dst, 0, sizeof(struct sockaddr_in));
+		memset(cmsgbuf, 0, sizeof(cmsgbuf));
 
 #if !defined(__Userspace_os_Windows)
 		msg.msg_name = (void *)&src;
@@ -908,13 +908,13 @@ recv_function_udp6(void *arg)
 		to_fill = 0;
 
 #if !defined(__Userspace_os_Windows)
-		bzero((void *)&msg, sizeof(struct msghdr));
+		memset(&msg, 0, sizeof(struct msghdr));
 #else
-		bzero((void *)&msg, sizeof(WSAMSG));
+		memset(&msg, 0, sizeof(WSAMSG));
 #endif
-		bzero((void *)&src, sizeof(struct sockaddr_in6));
-		bzero((void *)&dst, sizeof(struct sockaddr_in6));
-		bzero((void *)cmsgbuf, CMSG_SPACE(sizeof (struct in6_pktinfo)));
+		memset(&src, 0, sizeof(struct sockaddr_in6));
+		memset(&dst, 0, sizeof(struct sockaddr_in6));
+		memset(cmsgbuf, 0, CMSG_SPACE(sizeof (struct in6_pktinfo)));
 
 #if !defined(__Userspace_os_Windows)
 		msg.msg_name = (void *)&src;
