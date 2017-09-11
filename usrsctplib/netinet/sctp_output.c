@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_output.c 321204 2017-07-19 14:28:58Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_output.c 323378 2017-09-09 21:03:40Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -4482,11 +4482,11 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 	
 				mtu = SCTP_GATHER_MTU_FROM_ROUTE(net->ro._s_addr, &net->ro._l_addr.sa, ro->ro_rt);
 				if (mtu > 0) {
-					if ((stcb != NULL) && (stcb->asoc.smallest_mtu > mtu)) {
-						sctp_mtu_size_reset(inp, &stcb->asoc, mtu);
-					}
 					if (net->port) {
 						mtu -= sizeof(struct udphdr);
+					}
+					if ((stcb != NULL) && (stcb->asoc.smallest_mtu > mtu)) {
+						sctp_mtu_size_reset(inp, &stcb->asoc, mtu);
 					}
 					net->mtu = mtu;
 				}
@@ -4952,11 +4952,11 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 
 				mtu = SCTP_GATHER_MTU_FROM_ROUTE(net->ro._s_addr, &net->ro._l_addr.sa, ro->ro_rt);
 				if (mtu > 0) {
-					if ((stcb != NULL) && (stcb->asoc.smallest_mtu > mtu)) {
-						sctp_mtu_size_reset(inp, &stcb->asoc, mtu);
-					}
 					if (net->port) {
 						mtu -= sizeof(struct udphdr);
+					}
+					if ((stcb != NULL) && (stcb->asoc.smallest_mtu > mtu)) {
+						sctp_mtu_size_reset(inp, &stcb->asoc, mtu);
 					}
 					net->mtu = mtu;
 				}
