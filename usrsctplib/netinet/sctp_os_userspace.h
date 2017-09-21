@@ -78,7 +78,7 @@ typedef HANDLE userland_thread_t;
 #define IPVERSION  4
 #define MAXTTL     255
 /* VS2010 comes with stdint.h */
-#if _MSC_VER >= 1600
+#if (_MSC_VER >= 1600) || defined(__MINGW32__)
 #include <stdint.h>
 #else
 #define uint64_t   unsigned __int64
