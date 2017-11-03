@@ -32,7 +32,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_usrreq.c 323376 2017-09-09 20:44:56Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_usrreq.c 325284 2017-11-01 16:32:11Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -3063,7 +3063,12 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 #endif
 #ifdef INET6
 				case AF_INET6:
-					paddrp->spp_pathmtu -= SCTP_MIN_V4_OVERHEAD;
+					paddrp->spp_pathmtu -= SCTP_MIN_OVERHEAD;
+					break;
+#endif
+#if defined(__Userspace__)
+				case AF_CONN:
+					paddrp->spp_pathmtu -= sizeof(struct sctphdr);
 					break;
 #endif
 				default:
@@ -3240,6 +3245,11 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 				paddri->spinfo_mtu -= SCTP_MIN_OVERHEAD;
 				break;
 #endif
+#if defined(__Userspace__)
+			case AF_CONN:
+				paddri->spinfo_mtu -= sizeof(struct sctphdr);
+				break;
+#endif
 			default:
 				break;
 			}
@@ -3249,7 +3259,7 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 			if (stcb != NULL) {
 				SCTP_TCB_UNLOCK(stcb);
 			}
-		        SCTP_LTRACE_ERR_RET(inp, NULL, NULL, SCTP_FROM_SCTP_USRREQ, ENOENT);
+			SCTP_LTRACE_ERR_RET(inp, NULL, NULL, SCTP_FROM_SCTP_USRREQ, ENOENT);
 			error = ENOENT;
 		}
 		break;
@@ -3335,6 +3345,11 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 #if defined(INET6)
 		case AF_INET6:
 			sstat->sstat_primary.spinfo_mtu -= SCTP_MIN_OVERHEAD;
+			break;
+#endif
+#if defined(__Userspace__)
+		case AF_CONN:
+			sstat->sstat_primary.spinfo_mtu -= sizeof(struct sctphdr);
 			break;
 #endif
 		default:
@@ -6143,6 +6158,11 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 						net->mtu += SCTP_MIN_OVERHEAD;
 						break;
 #endif
+#if defined(__Userspace__)
+					case AF_CONN:
+						net->mtu += sizeof(struct sctphdr);
+						break;
+#endif
 					default:
 						break;
 					}
@@ -6284,6 +6304,11 @@ sctp_setopt(struct socket *so, int optname, void *optval, size_t optsize,
 #ifdef INET6
 						case AF_INET6:
 							net->mtu += SCTP_MIN_OVERHEAD;
+							break;
+#endif
+#if defined(__Userspace__)
+						case AF_CONN:
+							net->mtu += sizeof(struct sctphdr);
 							break;
 #endif
 						default:
