@@ -72,10 +72,9 @@ if ( MSVC )
     set ( HAVE_INET_NTOP 1 )
     set ( HAVE_INET_PTON 1 )
 else()
-    include(CheckFunctionExists)
-
-    check_function_exists ( "inet_ntop" HAVE_INET_NTOP )
-    check_function_exists ( "inet_pton" HAVE_INET_PTON )
+    include(CheckIncludeFile)
+    check_include_file ( "arpa/inet.h" HAVE_INET_NTOP )
+    check_include_file ( "arpa/inet.h" HAVE_INET_PTON )
 endif()
 
 if ( HAVE_INET_NTOP )
@@ -134,3 +133,4 @@ foreach (source_file ${check_programs})
 		${CMAKE_THREAD_LIBS_INIT}
 	)
 endforeach ()
+

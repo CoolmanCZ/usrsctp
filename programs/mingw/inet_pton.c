@@ -19,18 +19,22 @@
 static const char rcsid[] = "$Id: inet_pton.c,v 1.3.18.2 2005/07/28 07:38:07 marka Exp $";
 #endif /* LIBC_SCCS and not lint */
 
-#if !defined(_WIN32)
+#ifdef __FreeBSD__
 #include <sys/cdefs.h>
 __FBSDID("$FreeBSD: stable/9/sys/libkern/inet_pton.c 213103 2010-09-24 15:01:45Z attilio $");
+#endif
 
+#if !defined(_WIN32) 
 #include <sys/param.h>
 #include <sys/socket.h>
-#include <sys/systm.h>
 
 #include <netinet/in.h>
 #else
 #include <ws2tcpip.h>
 #endif
+
+#include <stdio.h>
+#include <string.h>
 
 #if !defined(_WIN32) && __FreeBSD_version < 700000
 #define strchr index

@@ -70,6 +70,12 @@ SET(CMAKE_FIND_ROOT_PATH /usr/i686-w64-mingw32 )
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+
+# The try_run() starts a test program (Modules/CheckForPthreads.c) that starts
+# two threads, each increments a global variable (not marked volatile) without
+# any lock and at the end returns the value of this variable.
+# The test verifies whether 2 is returned.
+set(THREADS_PTHREAD_ARG "2" CACHE STRING "Result from TRY_RUN" FORCE)
 ```
 
 #### 64bit toolchain example for Ubuntu
@@ -91,5 +97,11 @@ SET(CMAKE_FIND_ROOT_PATH /usr/x86_64-w64-mingw32 )
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+
+# The try_run() starts a test program (Modules/CheckForPthreads.c) that starts
+# two threads, each increments a global variable (not marked volatile) without
+# any lock and at the end returns the value of this variable.
+# The test verifies whether 2 is returned.
+set(THREADS_PTHREAD_ARG "2" CACHE STRING "Result from TRY_RUN" FORCE)
 ```
 
