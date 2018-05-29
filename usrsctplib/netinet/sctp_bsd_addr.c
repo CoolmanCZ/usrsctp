@@ -34,7 +34,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_bsd_addr.c 310590 2016-12-26 11:06:41Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_bsd_addr.c 333813 2018-05-18 20:13:34Z mmacy $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -583,12 +583,8 @@ sctp_init_ifns_for_vrf(int vrfid)
 			/* non desired type */
 			continue;
 		}
-#if (__FreeBSD_version >= 803000 && __FreeBSD_version < 900000) || __FreeBSD_version > 900000
 		IF_ADDR_RLOCK(ifn);
-#else
-		IF_ADDR_LOCK(ifn);
-#endif
-		TAILQ_FOREACH(ifa, &ifn->if_addrhead, ifa_link) {
+		CK_STAILQ_FOREACH(ifa, &ifn->if_addrhead, ifa_link) {
 			if (ifa->ifa_addr == NULL) {
 				continue;
 			}
@@ -640,11 +636,7 @@ sctp_init_ifns_for_vrf(int vrfid)
 				sctp_ifa->localifa_flags &= ~SCTP_ADDR_DEFER_USE;
 			}
 		}
-#if (__FreeBSD_version >= 803000 && __FreeBSD_version < 900000) || __FreeBSD_version > 900000
 		IF_ADDR_RUNLOCK(ifn);
-#else
-		IF_ADDR_UNLOCK(ifn);
-#endif
 	}
 	IFNET_RUNLOCK();
 }
@@ -759,7 +751,7 @@ sctp_add_or_del_interfaces(int (*pred)(struct ifnet *), int add)
 		if (!(*pred)(ifn)) {
 			continue;
 		}
-		TAILQ_FOREACH(ifa, &ifn->if_addrhead, ifa_link) {
+		CK_STAILQ_FOREACH(ifa, &ifn->if_addrhead, ifa_link) {
 			sctp_addr_change(ifa, add ? RTM_ADD : RTM_DELETE);
 		}
 	}
@@ -815,7 +807,7 @@ sctp_get_mbuf_for_msg(unsigned int space_needed, int want_header,
 			m_freem(m);
 			return (NULL);
 		}
-		KASSERT(!SCTP_BUF_NEXT(m), ("%s: no chain allowed", __FUNCTION__));
+		KASSERT(SCTP_BUF_NEXT(m) == NULL, ("%s: no chain allowed", __FUNCTION__));
 	}
 #endif
 #ifdef SCTP_MBUF_LOGGING
