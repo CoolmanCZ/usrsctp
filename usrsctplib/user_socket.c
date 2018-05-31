@@ -3527,7 +3527,7 @@ int usrsctp_sysctl_set_ ## __field(uint32_t value)   \
 	}                                            \
 }
 
-#if !defined(__Userspace_os_Windows)
+#if defined (__MINGW32__) || !defined(__Userspace_os_Windows)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wtype-limits"
 #endif
