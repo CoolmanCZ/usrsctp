@@ -3217,10 +3217,6 @@ void sctp_userspace_ip6_output(int *result, struct mbuf *o_pak,
 			SCTP_PRINTF("Why did the SCTP implementation did not choose a source address?\n");
 		}
 		/* TODO need to worry about ro->ro_dst as in ip_output? */
-#if defined(__Userspace_os_Linux) || defined (__Userspace_os_Windows)
-		/* need to put certain fields into network order for Linux */
-		ip6->ip6_plen = htons(ip6->ip6_plen);
-#endif
 	}
 
 	memset((void *)&dst, 0, sizeof(struct sockaddr_in6));
@@ -3361,12 +3357,11 @@ usrsctp_dumppacket(const void *buf, size_t len, int outbound)
 {
 	size_t i, pos;
 	char *dump_buf, *packet;
-#if defined (_WIN32) && !defined (__MINGW32__)
-	struct timeb tb;
 	struct tm t;
+#ifdef _WIN32
+	struct timeb tb;
 #else
 	struct timeval tv;
-	struct tm *t;
 	time_t sec;
 #endif
 
@@ -3377,7 +3372,7 @@ usrsctp_dumppacket(const void *buf, size_t len, int outbound)
 		return (NULL);
 	}
 	pos = 0;
-#if defined (_WIN32) && !defined (__MINGW32__)
+#ifdef _WIN32
 	ftime(&tb);
 	localtime_s(&t, &tb.time);
 	_snprintf_s(dump_buf, PREAMBLE_LENGTH + 1, PREAMBLE_LENGTH, PREAMBLE_FORMAT,
@@ -3386,10 +3381,10 @@ usrsctp_dumppacket(const void *buf, size_t len, int outbound)
 #else
 	gettimeofday(&tv, NULL);
 	sec = (time_t)tv.tv_sec;
-	t = localtime((const time_t *)&sec);
+	localtime_r((const time_t *)&sec, &t);
 	snprintf(dump_buf, PREAMBLE_LENGTH + 1, PREAMBLE_FORMAT,
 	         outbound ? 'O' : 'I',
-	         t->tm_hour, t->tm_min, t->tm_sec, (long)tv.tv_usec);
+	         t.tm_hour, t.tm_min, t.tm_sec, (long)tv.tv_usec);
 #endif
 	pos += PREAMBLE_LENGTH;
 #ifdef _WIN32
