@@ -34,7 +34,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctputil.c 334286 2018-05-28 13:31:47Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctputil.c 338135 2018-08-21 13:37:06Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -1044,7 +1044,7 @@ sctp_init_asoc(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 
 	asoc = &stcb->asoc;
 	/* init all variables to a known value. */
-	SCTP_SET_STATE(&stcb->asoc, SCTP_STATE_INUSE);
+	SCTP_SET_STATE(stcb, SCTP_STATE_INUSE);
 	asoc->max_burst = inp->sctp_ep.max_burst;
 	asoc->fr_max_burst = inp->sctp_ep.fr_max_burst;
 	asoc->heart_beat_delay = TICKS_TO_MSEC(inp->sctp_ep.sctp_timeoutticks[SCTP_TIMER_HEARTBEAT]);
@@ -1616,6 +1616,9 @@ sctp_timeout_handler(void *t)
 #if defined(__APPLE__) || defined(SCTP_SO_LOCK_TESTING)
 	struct socket *so;
 #endif
+#if defined(__Userspace__)
+	struct socket *upcall_socket = NULL;
+#endif
 	int did_output;
 	int type;
 
@@ -1754,6 +1757,16 @@ sctp_timeout_handler(void *t)
 	}
 	SCTP_OS_TIMER_DEACTIVATE(&tmr->timer);
 
+#if defined(__Userspace__)
+	if ((stcb != NULL) &&
+	    !(stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_SOCKET_GONE) &&
+	    (stcb->sctp_socket != NULL)) {
+		upcall_socket = stcb->sctp_socket;
+		SOCK_LOCK(upcall_socket);
+		soref(upcall_socket);
+		SOCK_UNLOCK(upcall_socket);
+	}
+#endif
 	/* call the handler for the appropriate timer type */
 	switch (type) {
 	case SCTP_TIMER_TYPE_ADDR_WQ:
@@ -2055,6 +2068,17 @@ get_out:
 	}
 
 out_decr:
+#if defined(__Userspace__)
+	if (upcall_socket != NULL) {
+		if ((upcall_socket->so_upcall != NULL) &&
+		    (upcall_socket->so_error != 0)) {
+			(*upcall_socket->so_upcall)(upcall_socket, upcall_socket->so_upcallarg, M_NOWAIT);
+		}
+		ACCEPT_LOCK();
+		SOCK_LOCK(upcall_socket);
+		sorele(upcall_socket);
+	}
+#endif
 	if (inp) {
 		SCTP_INP_DECR_REF(inp);
 	}
@@ -2877,7 +2901,7 @@ set_error:
 	    ((state == SCTP_COMM_LOST) || (state == SCTP_CANT_STR_ASSOC))) {
 		SOCK_LOCK(stcb->sctp_socket);
 		if (from_peer) {
-			if (SCTP_GET_STATE(&stcb->asoc) == SCTP_STATE_COOKIE_WAIT) {
+			if (SCTP_GET_STATE(stcb) == SCTP_STATE_COOKIE_WAIT) {
 				SCTP_LTRACE_ERR_RET(NULL, stcb, NULL, SCTP_FROM_SCTPUTIL, ECONNREFUSED);
 				stcb->sctp_socket->so_error = ECONNREFUSED;
 			} else {
@@ -2885,8 +2909,8 @@ set_error:
 				stcb->sctp_socket->so_error = ECONNRESET;
 			}
 		} else {
-			if ((SCTP_GET_STATE(&stcb->asoc) == SCTP_STATE_COOKIE_WAIT) ||
-			    (SCTP_GET_STATE(&stcb->asoc) == SCTP_STATE_COOKIE_ECHOED)) {
+			if ((SCTP_GET_STATE(stcb) == SCTP_STATE_COOKIE_WAIT) ||
+			    (SCTP_GET_STATE(stcb) == SCTP_STATE_COOKIE_ECHOED)) {
 				SCTP_LTRACE_ERR_RET(NULL, stcb, NULL, SCTP_FROM_SCTPUTIL, ETIMEDOUT);
 				stcb->sctp_socket->so_error = ETIMEDOUT;
 			} else {
@@ -3800,8 +3824,8 @@ sctp_ulp_notify(uint32_t notification, struct sctp_tcb *stcb,
 		sctp_unlock_assert(SCTP_INP_SO(stcb->sctp_ep));
 	}
 #endif
-	if ((stcb->asoc.state & SCTP_STATE_COOKIE_WAIT) ||
-	    (stcb->asoc.state &  SCTP_STATE_COOKIE_ECHOED)) {
+	if ((SCTP_GET_STATE(stcb) == SCTP_STATE_COOKIE_WAIT) ||
+	    (SCTP_GET_STATE(stcb) ==  SCTP_STATE_COOKIE_ECHOED)) {
 		if ((notification == SCTP_NOTIFY_INTERFACE_DOWN) ||
 		    (notification == SCTP_NOTIFY_INTERFACE_UP) ||
 		    (notification == SCTP_NOTIFY_INTERFACE_CONFIRMED)) {
@@ -3890,16 +3914,16 @@ sctp_ulp_notify(uint32_t notification, struct sctp_tcb *stcb,
 		break;
 		}
 	case SCTP_NOTIFY_ASSOC_LOC_ABORTED:
-		if (((stcb->asoc.state & SCTP_STATE_MASK) == SCTP_STATE_COOKIE_WAIT) ||
-		    ((stcb->asoc.state & SCTP_STATE_MASK) == SCTP_STATE_COOKIE_ECHOED)) {
+		if ((SCTP_GET_STATE(stcb) == SCTP_STATE_COOKIE_WAIT) ||
+		    (SCTP_GET_STATE(stcb) == SCTP_STATE_COOKIE_ECHOED)) {
 			sctp_notify_assoc_change(SCTP_CANT_STR_ASSOC, stcb, error, data, 0, so_locked);
 		} else {
 			sctp_notify_assoc_change(SCTP_COMM_LOST, stcb, error, data, 0, so_locked);
 		}
 		break;
 	case SCTP_NOTIFY_ASSOC_REM_ABORTED:
-		if (((stcb->asoc.state & SCTP_STATE_MASK) == SCTP_STATE_COOKIE_WAIT) ||
-		    ((stcb->asoc.state & SCTP_STATE_MASK) == SCTP_STATE_COOKIE_ECHOED)) {
+		if ((SCTP_GET_STATE(stcb) == SCTP_STATE_COOKIE_WAIT) ||
+		    (SCTP_GET_STATE(stcb) == SCTP_STATE_COOKIE_ECHOED)) {
 			sctp_notify_assoc_change(SCTP_CANT_STR_ASSOC, stcb, error, data, 1, so_locked);
 		} else {
 			sctp_notify_assoc_change(SCTP_COMM_LOST, stcb, error, data, 1, so_locked);
@@ -4161,7 +4185,7 @@ sctp_abort_association(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 	if (stcb != NULL) {
 		/* We have a TCB to abort, send notification too */
 		sctp_abort_notification(stcb, 0, 0, NULL, SCTP_SO_NOT_LOCKED);
-		stcb->asoc.state |= SCTP_STATE_WAS_ABORTED;
+		SCTP_ADD_SUBSTATE(stcb, SCTP_STATE_WAS_ABORTED);
 		/* Ok, now lets free it */
 #if defined(__APPLE__) || defined(SCTP_SO_LOCK_TESTING)
 		so = SCTP_INP_SO(inp);
@@ -4172,8 +4196,8 @@ sctp_abort_association(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 		atomic_subtract_int(&stcb->asoc.refcnt, 1);
 #endif
 		SCTP_STAT_INCR_COUNTER32(sctps_aborted);
-		if ((SCTP_GET_STATE(&stcb->asoc) == SCTP_STATE_OPEN) ||
-		    (SCTP_GET_STATE(&stcb->asoc) == SCTP_STATE_SHUTDOWN_RECEIVED)) {
+		if ((SCTP_GET_STATE(stcb) == SCTP_STATE_OPEN) ||
+		    (SCTP_GET_STATE(stcb) == SCTP_STATE_SHUTDOWN_RECEIVED)) {
 			SCTP_STAT_DECR_GAUGE32(sctps_currestab);
 		}
 		(void)sctp_free_assoc(inp, stcb, SCTP_NORMAL_PROC,
@@ -4288,13 +4312,13 @@ sctp_abort_an_association(struct sctp_inpcb *inp, struct sctp_tcb *stcb,
 		}
 		return;
 	} else {
-		stcb->asoc.state |= SCTP_STATE_WAS_ABORTED;
+		SCTP_ADD_SUBSTATE(stcb, SCTP_STATE_WAS_ABORTED);
 	}
 	/* notify the peer */
 	sctp_send_abort_tcb(stcb, op_err, so_locked);
 	SCTP_STAT_INCR_COUNTER32(sctps_aborted);
-	if ((SCTP_GET_STATE(&stcb->asoc) == SCTP_STATE_OPEN) ||
-	    (SCTP_GET_STATE(&stcb->asoc) == SCTP_STATE_SHUTDOWN_RECEIVED)) {
+	if ((SCTP_GET_STATE(stcb) == SCTP_STATE_OPEN) ||
+	    (SCTP_GET_STATE(stcb) == SCTP_STATE_SHUTDOWN_RECEIVED)) {
 		SCTP_STAT_DECR_GAUGE32(sctps_currestab);
 	}
 	/* notify the ulp */
@@ -5537,9 +5561,8 @@ sctp_user_rcvd(struct sctp_tcb *stcb, uint32_t *freed_so_far, int hold_rlock,
 
 	atomic_add_int(&stcb->asoc.refcnt, 1);
 
-	if (stcb->asoc.state & (SCTP_STATE_ABOUT_TO_BE_FREED |
-				SCTP_STATE_SHUTDOWN_RECEIVED |
-				SCTP_STATE_SHUTDOWN_ACK_SENT)) {
+	if ((SCTP_GET_STATE(stcb) == SCTP_STATE_SHUTDOWN_ACK_SENT) ||
+            (stcb->asoc.state & (SCTP_STATE_ABOUT_TO_BE_FREED | SCTP_STATE_SHUTDOWN_RECEIVED))) {
 		/* Pre-check If we are freeing no update */
 		goto no_lock;
 	}
@@ -7873,6 +7896,24 @@ sctp_recv_icmp_tunneled_packet(int cmd, struct sockaddr *sa, void *vip, void *ct
 		sctp_notify(inp, stcb, net, type, code,
 		            ntohs(inner_ip->ip_len),
 		            (uint32_t)ntohs(icmp->icmp_nextmtu));
+#if defined(__Userspace__)
+		if (!(stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_SOCKET_GONE) &&) {
+		    (stcb->sctp_socket != NULL)) {
+			struct socket *upcall_socket = NULL;
+
+			upcall_socket = stcb->sctp_socket;
+			SOCK_LOCK(upcall_socket);
+			soref(upcall_socket);
+			SOCK_UNLOCK(upcall_socket);
+			if ((upcall_socket->so_upcall != NULL) &&
+			    (upcall_socket->so_error != 0)) {
+				(*upcall_socket->so_upcall)(upcall_socket, upcall_socket->so_upcallarg, M_NOWAIT);
+			}
+			ACCEPT_LOCK();
+			SOCK_LOCK(upcall_socket);
+			sorele(upcall_socket);
+		}
+#endif
 	} else {
 #if defined(__FreeBSD__) && __FreeBSD_version < 500000
 		/*
@@ -8038,6 +8079,24 @@ sctp_recv_icmp6_tunneled_packet(int cmd, struct sockaddr *sa, void *d, void *ctx
 		}
 		sctp6_notify(inp, stcb, net, type, code,
 			     ntohl(ip6cp->ip6c_icmp6->icmp6_mtu));
+#if defined(__Userspace__)
+		if (!(stcb->sctp_ep->sctp_flags & SCTP_PCB_FLAGS_SOCKET_GONE) &&
+		    (stcb->sctp_socket != NULL)) {
+			struct socket *upcall_socket = NULL;
+
+			upcall_socket = stcb->sctp_socket;
+			SOCK_LOCK(upcall_socket);
+			soref(upcall_socket);
+			SOCK_UNLOCK(upcall_socket);
+			if ((upcall_socket->so_upcall != NULL) &&
+			    (upcall_socket->so_error) {
+				(*upcall_socket->so_upcall)(upcall_socket, upcall_socket->so_upcallarg, M_NOWAIT);
+			}
+			ACCEPT_LOCK();
+			SOCK_LOCK(upcall_socket);
+			sorele(upcall_socket);
+		}
+#endif
 	} else {
 #if defined(__FreeBSD__) && __FreeBSD_version < 500000
 		if (PRC_IS_REDIRECT(cmd) && (inp != NULL)) {
@@ -8259,3 +8318,27 @@ sctp_hc_get_mtu(union sctp_sockstore *addr, uint16_t fibnum)
 	return ((uint32_t)tcp_hc_getmtu(&inc));
 }
 #endif
+
+void
+sctp_set_state(struct sctp_tcb *stcb, int new_state)
+{
+	KASSERT((new_state & ~SCTP_STATE_MASK) == 0,
+	        ("sctp_set_state: Can't set substate (new_state = %x)",
+	        new_state));
+	stcb->asoc.state = (stcb->asoc.state & ~SCTP_STATE_MASK) | new_state;
+	if ((new_state == SCTP_STATE_SHUTDOWN_RECEIVED) ||
+	    (new_state == SCTP_STATE_SHUTDOWN_SENT) ||
+	    (new_state == SCTP_STATE_SHUTDOWN_ACK_SENT)) {
+		SCTP_CLEAR_SUBSTATE(stcb, SCTP_STATE_SHUTDOWN_PENDING);
+	}
+}
+
+void
+sctp_add_substate(struct sctp_tcb *stcb, int substate)
+{
+	KASSERT((substate & SCTP_STATE_MASK) == 0,
+	        ("sctp_add_substate: Can't set state (substate = %x)",
+	        substate));
+	stcb->asoc.state |= substate;
+}
+
