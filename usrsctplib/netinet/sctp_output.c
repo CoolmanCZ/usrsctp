@@ -34,7 +34,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_output.c 339024 2018-09-30 16:21:31Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_output.c 339221 2018-10-07 15:13:47Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -4595,6 +4595,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 #endif
 		{
 			SCTP_LTRACE_ERR_RET_PKT(m, inp, stcb, net, SCTP_FROM_SCTP_OUTPUT, EINVAL);
+			sctp_m_freem(m);
 			return (EINVAL);
 		}
 #endif /* SCTP_EMBEDDED_V6_SCOPE */
@@ -4682,6 +4683,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 #endif
 				{
 					SCTP_LTRACE_ERR_RET_PKT(m, inp, stcb, net, SCTP_FROM_SCTP_OUTPUT, EINVAL);
+					sctp_m_freem(m);
 					return (EINVAL);
 				}
 #endif /* SCTP_EMBEDDED_V6_SCOPE */
@@ -4727,6 +4729,7 @@ sctp_lowlevel_chunk_output(struct sctp_inpcb *inp,
 #endif
 			  {
 				SCTP_LTRACE_ERR_RET_PKT(m, inp, stcb, net, SCTP_FROM_SCTP_OUTPUT, EINVAL);
+				sctp_m_freem(m);
 				return (EINVAL);
 			  }
 #endif /* SCTP_EMBEDDED_V6_SCOPE */
@@ -5368,7 +5371,6 @@ sctp_arethere_unrecognized_parameters(struct mbuf *in_initpkt,
 	struct sctp_paramhdr *phdr, params;
 
 	struct mbuf *mat, *op_err;
-	char tempbuf[SCTP_PARAM_BUFFER_SIZE];
 	int at, limit, pad_needed;
 	uint16_t ptype, plen, padded_size;
 	int err_at;
@@ -5508,14 +5510,13 @@ sctp_arethere_unrecognized_parameters(struct mbuf *in_initpkt,
 				l_len = SCTP_MIN_V4_OVERHEAD;
 #endif
 				l_len += sizeof(struct sctp_chunkhdr);
-				l_len += plen;
-				l_len += sizeof(struct sctp_paramhdr);
+				l_len += sizeof(struct sctp_gen_error_cause);
 				op_err = sctp_get_mbuf_for_msg(l_len, 0, M_NOWAIT, 1, MT_DATA);
 				if (op_err) {
 					SCTP_BUF_LEN(op_err) = 0;
 					/*
-					 * pre-reserve space for ip and sctp
-					 * header  and chunk hdr
+					 * Pre-reserve space for IP, SCTP, and
+					 * chunk header.
 					 */
 #ifdef INET6
 					SCTP_BUF_RESV_UF(op_err, sizeof(struct ip6_hdr));
@@ -5528,7 +5529,7 @@ sctp_arethere_unrecognized_parameters(struct mbuf *in_initpkt,
 			}
 			if (op_err) {
 				/* If we have space */
-				struct sctp_paramhdr s;
+				struct sctp_gen_error_cause cause;
 
 				if (err_at % 4) {
 					uint32_t cpthis = 0;
@@ -5537,25 +5538,15 @@ sctp_arethere_unrecognized_parameters(struct mbuf *in_initpkt,
 					m_copyback(op_err, err_at, pad_needed, (caddr_t)&cpthis);
 					err_at += pad_needed;
 				}
-				s.param_type = htons(SCTP_CAUSE_UNRESOLVABLE_ADDR);
-				s.param_length = htons(sizeof(s) + plen);
-				m_copyback(op_err, err_at, sizeof(s), (caddr_t)&s);
-				err_at += sizeof(s);
-				if (plen > sizeof(tempbuf)) {
-					plen = sizeof(tempbuf);
-				}
-				phdr = sctp_get_next_param(mat, at, (struct sctp_paramhdr *)tempbuf, plen);
-				if (phdr == NULL) {
+				cause.code = htons(SCTP_CAUSE_UNRESOLVABLE_ADDR);
+				cause.length = htons((uint16_t)(sizeof(struct sctp_gen_error_cause) + plen));
+				m_copyback(op_err, err_at, sizeof(struct sctp_gen_error_cause), (caddr_t)&cause);
+				err_at += sizeof(struct sctp_gen_error_cause);
+				SCTP_BUF_NEXT(op_err) = SCTP_M_COPYM(mat, at, plen, M_NOWAIT);
+				if (SCTP_BUF_NEXT(op_err) == NULL) {
 					sctp_m_freem(op_err);
-					/*
-					 * we are out of memory but we still
-					 * need to have a look at what to do
-					 * (the system is in trouble
-					 * though).
-					 */
 					return (NULL);
 				}
-				m_copyback(op_err, err_at, plen, (caddr_t)phdr);
 			}
 			return (op_err);
 			break;
@@ -5578,7 +5569,6 @@ sctp_arethere_unrecognized_parameters(struct mbuf *in_initpkt,
 					l_len = SCTP_MIN_V4_OVERHEAD;
 #endif
 					l_len += sizeof(struct sctp_chunkhdr);
-					l_len += plen;
 					l_len += sizeof(struct sctp_paramhdr);
 					op_err = sctp_get_mbuf_for_msg(l_len, 0, M_NOWAIT, 1, MT_DATA);
 					if (op_err) {
@@ -5604,14 +5594,11 @@ sctp_arethere_unrecognized_parameters(struct mbuf *in_initpkt,
 						err_at += pad_needed;
 					}
 					s.param_type = htons(SCTP_UNRECOG_PARAM);
-					s.param_length = htons(sizeof(s) + plen);
-					m_copyback(op_err, err_at, sizeof(s), (caddr_t)&s);
-					err_at += sizeof(s);
-					if (plen > sizeof(tempbuf)) {
-						plen = sizeof(tempbuf);
-					}
-					phdr = sctp_get_next_param(mat, at, (struct sctp_paramhdr *)tempbuf, plen);
-					if (phdr == NULL) {
+					s.param_length = htons((uint16_t)sizeof(struct sctp_paramhdr) + plen);
+					m_copyback(op_err, err_at, sizeof(struct sctp_paramhdr), (caddr_t)&s);
+					err_at += sizeof(struct sctp_paramhdr);
+					SCTP_BUF_NEXT(op_err) = SCTP_M_COPYM(mat, at, plen, M_NOWAIT);
+					if (SCTP_BUF_NEXT(op_err) == NULL) {
 						sctp_m_freem(op_err);
 						/*
 						 * we are out of memory but
@@ -5623,7 +5610,6 @@ sctp_arethere_unrecognized_parameters(struct mbuf *in_initpkt,
 						op_err = NULL;
 						goto more_processing;
 					}
-					m_copyback(op_err, err_at, plen, (caddr_t)phdr);
 					err_at += plen;
 				}
 			}
@@ -9472,14 +9458,15 @@ sctp_queue_op_err(struct sctp_tcb *stcb, struct mbuf *op_err)
 		return;
 	}
 	chk->copy_by_ref = 0;
+	chk->rec.chunk_id.id = SCTP_OPERATION_ERROR;
+	chk->rec.chunk_id.can_take_data = 0;
+	chk->flags = 0;
 	chk->send_size = (uint16_t)chunk_length;
 	chk->sent = SCTP_DATAGRAM_UNSENT;
 	chk->snd_count = 0;
 	chk->asoc = &stcb->asoc;
 	chk->data = op_err;
 	chk->whoTo = NULL;
-	chk->rec.chunk_id.id = SCTP_OPERATION_ERROR;
-	chk->rec.chunk_id.can_take_data = 0;
 	hdr = mtod(op_err, struct sctp_chunkhdr *);
 	hdr->chunk_type = SCTP_OPERATION_ERROR;
 	hdr->chunk_flags = 0;
@@ -9701,7 +9688,6 @@ sctp_send_shutdown_ack(struct sctp_tcb *stcb, struct sctp_nets *net)
 	chk->send_size = sizeof(struct sctp_chunkhdr);
 	chk->sent = SCTP_DATAGRAM_UNSENT;
 	chk->snd_count = 0;
-	chk->flags = 0;
 	chk->asoc = &stcb->asoc;
 	chk->data = m_shutdown_ack;
 	chk->whoTo = net;
@@ -9756,7 +9742,6 @@ sctp_send_shutdown(struct sctp_tcb *stcb, struct sctp_nets *net)
 		chk->send_size = sizeof(struct sctp_shutdown_chunk);
 		chk->sent = SCTP_DATAGRAM_UNSENT;
 		chk->snd_count = 0;
-		chk->flags = 0;
 		chk->asoc = &stcb->asoc;
 		chk->data = m_shutdown;
 		chk->whoTo = net;
@@ -12269,7 +12254,7 @@ sctp_send_packet_dropped(struct sctp_tcb *stcb, struct sctp_nets *net,
 	chk->flags = 0;
 	len -= iphlen;
 	chk->send_size = len;
-        /* Validate that we do not have an ABORT in here. */
+	/* Validate that we do not have an ABORT in here. */
 	offset = iphlen + sizeof(struct sctphdr);
 	ch = (struct sctp_chunkhdr *)sctp_m_getptr(m, offset,
 						   sizeof(*ch), (uint8_t *) & chunk_buf);
@@ -12895,7 +12880,6 @@ sctp_send_str_reset_req(struct sctp_tcb *stcb,
 	chk->book_size = sizeof(struct sctp_chunkhdr);
 	chk->send_size = SCTP_SIZE32(chk->book_size);
 	chk->book_size_scale = 0;
-
 	chk->data = sctp_get_mbuf_for_msg(MCLBYTES, 0, M_NOWAIT, 1, MT_DATA);
 	if (chk->data == NULL) {
 		sctp_free_a_chunk(stcb, chk, SCTP_SO_LOCKED);
