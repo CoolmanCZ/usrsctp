@@ -1420,7 +1420,7 @@ usrsctp_socket(int domain, int type, int protocol,
 	       uint32_t sb_threshold,
 	       void *ulp_info)
 {
-	struct socket *so;
+	struct socket *so = NULL;
 
 	if ((protocol == IPPROTO_SCTP) && (SCTP_BASE_VAR(sctp_pcb_initialized) == 0)) {
 		errno = EPROTONOSUPPORT;
@@ -2140,7 +2140,7 @@ done1:
 
 int usrsctp_connect(struct socket *so, struct sockaddr *name, int namelen)
 {
-	struct sockaddr *sa;
+	struct sockaddr *sa = NULL;
 
 	errno = getsockaddr(&sa, (caddr_t)name, namelen);
 	if (errno)

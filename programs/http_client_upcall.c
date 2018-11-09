@@ -107,7 +107,9 @@ static void handle_upcall(struct socket *sock, void *arg, int flgs)
 #ifdef _WIN32
 			_write(_fileno(stdout), buf, (unsigned int)n);
 #else
-			write(1, buf, n);
+                        if (write(fileno(stdout), buf, n) < 0) {
+                            perror("write");
+                        }
 #endif
 		done = 1;
 		usrsctp_close(sock);
