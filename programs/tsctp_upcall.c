@@ -120,7 +120,6 @@ gettimeofday(struct timeval *tv, void *ignore)
 	} while (0)
 #endif
 
-
 char Usage[] =
 "Usage: tsctp [options] [address]\n"
 "Options:\n"
@@ -185,11 +184,21 @@ handle_accept(struct socket *upcall_socket, void *upcall_data, int upcall_flags)
 	}
 
 	meta_accepted = malloc(sizeof(struct tsctp_meta));
+	if (!meta_accepted) {
+		printf("malloc() failed!\n");
+		exit(EXIT_FAILURE);
+	}
+
 	memset(meta_accepted, 0, sizeof(struct tsctp_meta));
 
 	meta_accepted->par_role = meta_listening->par_role;
 	meta_accepted->par_stats_human = meta_listening->par_stats_human;
 	meta_accepted->buffer = malloc(BUFFERSIZE);
+	
+	if (!meta_accepted->buffer) {
+		printf("malloc() failed!\n");
+		exit(EXIT_FAILURE);
+	}
 
 	usrsctp_set_upcall(conn_sock, handle_upcall, meta_accepted);
 }
@@ -240,20 +249,11 @@ handle_upcall(struct socket *upcall_socket, void *upcall_data, int upcall_flags)
 			} else {
 				if (par_very_verbose) {
 					if (infotype == SCTP_RECVV_RCVINFO) {
-#ifdef __MINGW32__
-						printf("Message received - %lu bytes - %s - sid %u - tsn %u %s\n",
-							(unsigned long)n,
-							(rcvinfo->rcv_flags & SCTP_UNORDERED) ? "unordered" : "ordered",
-							rcvinfo->rcv_sid,
-							rcvinfo->rcv_tsn,
-							(recv_flags & MSG_EOR) ? "- EOR" : ""
-						);
-
-					} else {
-						printf("Message received - %lu bytes %s\n", (unsigned long)n, (recv_flags & MSG_EOR) ? "- EOR" : "");
-					}
+#ifdef _WIN32
+						printf("Message received - %" PRIu64 " bytes - %s - sid %u - tsn %u %s\n",
 #else
 						printf("Message received - %zd bytes - %s - sid %u - tsn %u %s\n",
+#endif
 							n,
 							(rcvinfo->rcv_flags & SCTP_UNORDERED) ? "unordered" : "ordered",
 							rcvinfo->rcv_sid,
@@ -262,9 +262,12 @@ handle_upcall(struct socket *upcall_socket, void *upcall_data, int upcall_flags)
 						);
 
 					} else {
+#ifdef _WIN32
+						printf("Message received - %" PRIu64 " bytes %s\n", n, (recv_flags & MSG_EOR) ? "- EOR" : "");
+#else
 						printf("Message received - %zd bytes %s\n", n, (recv_flags & MSG_EOR) ? "- EOR" : "");
-					}
 #endif
+					}
 				}
 				tsctp_meta->stat_fragment_sum += n;
 				if (recv_flags & MSG_EOR) {
@@ -276,7 +279,7 @@ handle_upcall(struct socket *upcall_socket, void *upcall_data, int upcall_flags)
 			}
 		}
 
-		if (n < 0 && errno != EAGAIN) {
+		if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
 			perror("usrsctp_recvv");
 			exit(EXIT_FAILURE);
 		}
@@ -310,6 +313,10 @@ handle_upcall(struct socket *upcall_socket, void *upcall_data, int upcall_flags)
 			}
 			fflush(stdout);
 			usrsctp_close(upcall_socket);
+
+			free(tsctp_meta->buffer);
+			free(tsctp_meta);
+			return;
 		}
 	}
 
@@ -335,10 +342,12 @@ handle_upcall(struct socket *upcall_socket, void *upcall_data, int upcall_flags)
 			}
 		}
 
-		if (errno != EAGAIN) {
+		if (errno != EAGAIN && errno != EWOULDBLOCK) {
 			done = 1;
 			usrsctp_close(upcall_socket);
 			printf("client socket %p closed\n", (void *)upcall_socket);
+			free(tsctp_meta->buffer);
+			free(tsctp_meta);
 			return;
 		}
 
@@ -355,6 +364,9 @@ handle_upcall(struct socket *upcall_socket, void *upcall_data, int upcall_flags)
 
 			done = 1;
 			usrsctp_close(upcall_socket);
+			free(tsctp_meta->buffer);
+			free(tsctp_meta);
+			return;
 		}
 	}
 
@@ -419,19 +431,13 @@ int main(int argc, char **argv)
 	memset((void *) &local_addr, 0, sizeof(struct sockaddr_in));
 
 #ifndef _WIN32
-	while ((c = getopt(argc, argv, "a:cp:l:E:f:HL:n:R:S:T:uU:vVD")) != -1)
+	while ((c = getopt(argc, argv, "a:DE:f:Hl:L:n:p:R:S:T:uU:vV")) != -1)
 		switch(c) {
 			case 'a':
 				ind.ssb_adaptation_ind = atoi(optarg);
 				break;
-			case 'l':
-				par_message_length = atoi(optarg);
-				break;
-			case 'n':
-				par_messages = atoi(optarg);
-				break;
-			case 'p':
-				par_port = atoi(optarg);
+			case 'D':
+				nodelay = 1;
 				break;
 			case 'E':
 				local_udp_port = atoi(optarg);
@@ -442,10 +448,20 @@ int main(int argc, char **argv)
 			case 'H':
 				par_stats_human = 1;
 				break;
+			case 'l':
+				par_message_length = atoi(optarg);
+				break;
 			case 'L':
 				if (inet_pton(AF_INET, optarg, &src_addr) != 1) {
 					printf("Can't parse %s\n", optarg);
+					exit(EXIT_FAILURE);
 				}
+				break;
+			case 'n':
+				par_messages = atoi(optarg);
+				break;
+			case 'p':
+				par_port = atoi(optarg);
 				break;
 			case 'R':
 				rcvbufsize = atoi(optarg);
@@ -470,9 +486,6 @@ int main(int argc, char **argv)
 				par_verbose = 1;
 				par_very_verbose = 1;
 				break;
-			case 'D':
-				nodelay = 1;
-				break;
 			default:
 				fprintf(stderr, "%s", Usage);
 				exit(1);
@@ -489,29 +502,16 @@ int main(int argc, char **argv)
 					opt = argv[optind];
 					ind.ssb_adaptation_ind = atoi(opt);
 					break;
-				case 'l':
-					if (++optind >= argc) {
-						printf("%s", Usage);
-						exit(1);
-					}
-					opt = argv[optind];
-					par_message_length = atoi(opt);
+				case 'D':
+					nodelay = 1;
 					break;
-				case 'p':
+				case 'E':
 					if (++optind >= argc) {
 						printf("%s", Usage);
 						exit(1);
 					}
 					opt = argv[optind];
-					par_port = atoi(opt);
-					break;
-				case 'n':
-					if (++optind >= argc) {
-						printf("%s", Usage);
-						exit(1);
-					}
-					opt = argv[optind];
-					par_messages = atoi(opt);
+					local_udp_port = atoi(opt);
 					break;
 				case 'f':
 					if (++optind >= argc) {
@@ -521,6 +521,17 @@ int main(int argc, char **argv)
 					opt = argv[optind];
 					fragpoint = atoi(opt);
 					break;
+				case 'H':
+					par_stats_human = 1;
+					break;
+				case 'l':
+					if (++optind >= argc) {
+						printf("%s", Usage);
+						exit(1);
+					}
+					opt = argv[optind];
+					par_message_length = atoi(opt);
+					break;
 				case 'L':
 					if (++optind >= argc) {
 						printf("%s", Usage);
@@ -529,21 +540,21 @@ int main(int argc, char **argv)
 					opt = argv[optind];
 					inet_pton(AF_INET, opt, &src_addr);
 					break;
-				case 'U':
+				case 'n':
 					if (++optind >= argc) {
 						printf("%s", Usage);
 						exit(1);
 					}
 					opt = argv[optind];
-					remote_udp_port = atoi(opt);
+					par_messages = atoi(opt);
 					break;
-				case 'E':
+				case 'p':
 					if (++optind >= argc) {
 						printf("%s", Usage);
 						exit(1);
 					}
 					opt = argv[optind];
-					local_udp_port = atoi(opt);
+					par_port = atoi(opt);
 					break;
 				case 'R':
 					if (++optind >= argc) {
@@ -573,15 +584,20 @@ int main(int argc, char **argv)
 				case 'u':
 					par_ordered = 0;
 					break;
+				case 'U':
+					if (++optind >= argc) {
+						printf("%s", Usage);
+						exit(1);
+					}
+					opt = argv[optind];
+					remote_udp_port = atoi(opt);
+					break;
 				case 'v':
 					par_verbose = 1;
 					break;
 				case 'V':
 					par_verbose = 1;
 					par_very_verbose = 1;
-					break;
-				case 'D':
-					nodelay = 1;
 					break;
 				default:
 					printf("%s", Usage);
@@ -594,9 +610,18 @@ int main(int argc, char **argv)
 #endif
 
 	meta = malloc(sizeof(struct tsctp_meta));
+	if (!meta) {
+		printf("malloc() failed!\n");
+		exit(EXIT_FAILURE);
+	}
+
 	memset(meta, 0, sizeof(struct tsctp_meta));
 
 	meta->buffer = malloc(BUFFERSIZE);
+	if (!meta->buffer) {
+		printf("malloc() failed!\n");
+		exit(EXIT_FAILURE);
+	}
 
 	meta->par_stats_human = par_stats_human;
 	meta->par_message_length = par_message_length;
@@ -752,5 +777,6 @@ int main(int argc, char **argv)
 		sleep(1);
 #endif
 	}
+
 	return 0;
 }
