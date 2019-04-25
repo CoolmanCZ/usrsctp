@@ -56,6 +56,7 @@
 #include <string.h>
 #include <errno.h>
 #include <usrsctp.h>
+#include "programs_helper.h"
 
 #if !defined(HAVE_INET_NTOP) || !defined(HAVE_INET_PTON)
 #include "inet_functions.h"
@@ -1138,7 +1139,7 @@ handle_send_failed_event(struct sctp_send_failed_event *ssfe)
 }
 
 static void
-handle_notification(struct peer_connection *pc, union sctp_notification *notif, size_t n)
+handle_notification_rtcweb(struct peer_connection *pc, union sctp_notification *notif, size_t n)
 {
 	if (notif->sn_header.sn_length != (uint32_t)n) {
 		return;
@@ -1300,23 +1301,13 @@ receive_cb(struct socket *sock, union sctp_sockstore addr, void *data,
 	if (data) {
 		lock_peer_connection(pc);
 		if (flags & MSG_NOTIFICATION) {
-			handle_notification(pc, (union sctp_notification *)data, datalen);
+			handle_notification_rtcweb(pc, (union sctp_notification *)data, datalen);
 		} else {
 			handle_message(pc, data, datalen, ntohl(rcv.rcv_ppid), rcv.rcv_sid);
 		}
 		unlock_peer_connection(pc);
 	}
 	return (1);
-}
-
-void
-debug_printf(const char *format, ...)
-{
-	va_list ap;
-
-	va_start(ap, format);
-	vprintf(format, ap);
-	va_end(ap);
 }
 
 int

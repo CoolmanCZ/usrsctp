@@ -60,6 +60,7 @@
 #include <getopt.h>
 #endif
 #include <usrsctp.h>
+#include "programs_helper.h"
 
 #if !defined(HAVE_INET_NTOP) || !defined(HAVE_INET_PTON)
 #include "inet_functions.h"
@@ -363,16 +364,6 @@ handle_upcall(struct socket *upcall_socket, void *upcall_data, int upcall_flags)
 	}
 
 	return;
-}
-
-void
-debug_printf(const char *format, ...)
-{
-	va_list ap;
-
-	va_start(ap, format);
-	vprintf(format, ap);
-	va_end(ap);
 }
 
 int main(int argc, char **argv)
