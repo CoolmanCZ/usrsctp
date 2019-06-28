@@ -845,10 +845,10 @@ recv_function_udp6(void *arg)
 	char cmsgbuf[CMSG_SPACE(sizeof (struct in6_pktinfo))];
 	int compute_crc = 1;
 #if !defined(__Userspace_os_Windows)
-	unsigned int ncounter;
 	struct iovec iov[MAXLEN_MBUF_CHAIN];
 	struct msghdr msg;
 	struct cmsghdr *cmsgptr;
+	unsigned int ncounter;
 #else
 	GUID WSARecvMsg_GUID = WSAID_WSARECVMSG;
 	LPFN_WSARECVMSG WSARecvMsg;
@@ -856,8 +856,8 @@ recv_function_udp6(void *arg)
 	WSABUF iov[MAXLEN_MBUF_CHAIN];
 	WSAMSG msg;
 	int nResult, m_ErrorCode;
-	DWORD ncounter;
 	WSACMSGHDR *cmsgptr;
+	DWORD ncounter;
 #endif
 
 	sctp_userspace_set_threadname("SCTP/UDP/IP6 rcv");
