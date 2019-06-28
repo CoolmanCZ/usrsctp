@@ -68,10 +68,6 @@ sctp_userspace_thread_create(userland_thread_t *thread, start_routine_t start_ro
 	return 0;
 }
 
-#if defined (__MINGW32__)
-#pragma GCC diagnostic pop
-#endif
-
 int
 sctp_userspace_thread_id(userland_thread_id_t *thread)
 {
