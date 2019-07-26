@@ -97,18 +97,6 @@ struct tsctp_meta {
 	char *buffer;
 };
 
-#ifdef _WIN32
-static void
-gettimeofday(struct timeval *tv, void *ignore)
-{
-	struct timeb tb;
-
-	ftime(&tb);
-	tv->tv_sec = (long)tb.time;
- 	tv->tv_usec = tb.millitm * 1000;
-}
-#endif
-
 #ifndef timersub
 #define timersub(tvp, uvp, vvp)                                   \
 	do {                                                      \
@@ -119,6 +107,18 @@ gettimeofday(struct timeval *tv, void *ignore)
 			(vvp)->tv_usec += 1000000;                \
 		}                                                 \
 	} while (0)
+#endif
+
+#ifdef _WIN32
+static void
+gettimeofday(struct timeval *tv, void *ignore)
+{
+	struct timeb tb;
+
+	ftime(&tb);
+	tv->tv_sec = (long)tb.time;
+	tv->tv_usec = tb.millitm * 1000;
+}
 #endif
 
 char Usage[] =
