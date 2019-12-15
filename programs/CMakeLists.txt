@@ -78,42 +78,6 @@ find_package(Threads)
 
 
 #################################################
-# Create inet_ntop and inet_pton library
-#################################################
-
-if ( MSVC )
-    set ( HAVE_INET_NTOP 1 )
-    set ( HAVE_INET_PTON 1 )
-else()
-    include(CheckIncludeFile)
-    check_include_file ( "arpa/inet.h" HAVE_INET_NTOP )
-    check_include_file ( "arpa/inet.h" HAVE_INET_PTON )
-endif()
-
-if ( HAVE_INET_NTOP )
-    message ( STATUS "HAVE_INET_NTOP - found" )
-    add_definitions ( -DHAVE_INET_NTOP )
-else()
-    message ( STATUS "HAVE_INET_NTOP - not found" )
-    set ( INET_NTOP "mingw/inet_ntop.c" )
-endif()
-
-if ( HAVE_INET_PTON )
-    message ( STATUS "HAVE_INET_PTON - found" )
-    add_definitions ( -DHAVE_INET_PTON )
-else()
-    message ( STATUS "HAVE_INET_PTON - not found" )
-    set ( INET_PTON "mingw/inet_pton.c" )
-endif()
-
-if ( (NOT HAVE_INET_PTON ) OR (NOT HAVE_INET_NTOP) )
-    set ( LIB_COMMON_INET "common_inet" )
-    add_library ( ${LIB_COMMON_INET} ${INET_NTOP} ${INET_PTON} )
-    list ( APPEND programs_link_library ${LIB_COMMON_INET} )
-endif()
-
-
-#################################################
 # PROGRAMS
 #################################################
 
@@ -157,4 +121,3 @@ foreach (source_file ${check_programs})
 		${CMAKE_THREAD_LIBS_INIT}
 	)
 endforeach ()
-

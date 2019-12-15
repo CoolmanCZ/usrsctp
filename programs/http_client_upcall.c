@@ -56,10 +56,6 @@
 #include <usrsctp.h>
 #include "programs_helper.h"
 
-#if !defined(HAVE_INET_NTOP) || !defined(HAVE_INET_PTON)
-#include "inet_functions.h"
-#endif
-
 #define RETVAL_CATCHALL     50
 #define RETVAL_TIMEOUT      60
 #define RETVAL_ECONNREFUSED 61

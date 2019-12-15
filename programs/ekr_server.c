@@ -51,10 +51,6 @@
 #include <usrsctp.h>
 #include "programs_helper.h"
 
-#if !defined(HAVE_INET_NTOP) || !defined(HAVE_INET_PTON)
-#include "inet_functions.h"
-#endif
-
 #define PORT 5001
 #define MAX_PACKET_SIZE (1<<16)
 #define SLEEP 1

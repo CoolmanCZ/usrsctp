@@ -56,10 +56,6 @@
 #include "programs_helper.h"
 #include <fcntl.h>
 
-#if !defined(HAVE_INET_NTOP) || !defined(HAVE_INET_PTON)
-#include "inet_functions.h"
-#endif
-
 #define BUFFERSIZE                 (1<<16)
 
 int done = 0, input_done = 0, connected = 0;

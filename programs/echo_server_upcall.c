@@ -50,10 +50,6 @@
 #include <usrsctp.h>
 #include "programs_helper.h"
 
-#if !defined(HAVE_INET_NTOP) || !defined(HAVE_INET_PTON)
-#include "inet_functions.h"
-#endif
-
 #define BUFFERSIZE 10240
 #define PORT 7
 

@@ -56,10 +56,6 @@
 #include <usrsctp.h>
 #include "programs_helper.h"
 
-#if !defined(HAVE_INET_NTOP) || !defined(HAVE_INET_PTON)
-#include "inet_functions.h"
-#endif
-
 /* global for the send callback, but used in kernel version as well */
 static unsigned long number_of_messages;
 static char *buffer;

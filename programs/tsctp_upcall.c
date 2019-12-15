@@ -62,10 +62,6 @@
 #include <usrsctp.h>
 #include "programs_helper.h"
 
-#if !defined(HAVE_INET_NTOP) || !defined(HAVE_INET_PTON)
-#include "inet_functions.h"
-#endif
-
 #define TSCTP_CLIENT 1
 #define TSCTP_SERVER 2
 
