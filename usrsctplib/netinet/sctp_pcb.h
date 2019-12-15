@@ -320,7 +320,7 @@ struct sctp_base_info {
 #endif
 #endif
 #ifdef INET
-#if defined(__Userspace_os_Windows)
+#if defined(__Userspace_os_Windows) && !defined(__MINGW32__)
 	SOCKET userspace_rawsctp;
 	SOCKET userspace_udpsctp;
 #else
@@ -331,7 +331,7 @@ struct sctp_base_info {
 	userland_thread_t recvthreadudp;
 #endif
 #ifdef INET6
-#if defined(__Userspace_os_Windows)
+#if defined(__Userspace_os_Windows) && !defined(__MINGW32__)
 	SOCKET userspace_rawsctp6;
 	SOCKET userspace_udpsctp6;
 #else
@@ -448,7 +448,7 @@ struct sctp_inpcb {
 	 */
 	union {
 		struct inpcb inp;
-		char align[(sizeof(struct in6pcb) + SCTP_ALIGNM1) &
+		char align[(sizeof(struct inpcb) + SCTP_ALIGNM1) &
 		        ~SCTP_ALIGNM1];
 	}     ip_inp;
 
@@ -843,7 +843,11 @@ void sctp_remove_net(struct sctp_tcb *, struct sctp_nets *);
 
 int sctp_del_remote_addr(struct sctp_tcb *, struct sockaddr *);
 
+#if defined(__Userspace__)
+void sctp_pcb_init(int);
+#else
 void sctp_pcb_init(void);
+#endif
 
 void sctp_pcb_finish(void);
 

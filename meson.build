@@ -56,7 +56,7 @@ add_project_arguments([
 
 # OS-specific settings
 system = host_machine.system()
-if system == 'linux'
+if ['linux', 'android'].contains(system)
     add_project_arguments([
         '-D__Userspace_os_Linux',
         '-D_GNU_SOURCE',
@@ -68,7 +68,7 @@ elif system == 'freebsd'
     ] + compiler.get_supported_arguments([
         '-Wno-address-of-packed-member',
     ]), language: 'c')
-elif system == 'darwin'
+elif ['darwin', 'ios'].contains(system)
     add_project_arguments([
             '-D__Userspace_os_Darwin',
             '-U__APPLE__',
@@ -183,11 +183,33 @@ endif
 subdir('usrsctplib')
 
 # Build library
-usrsctp = library('usrsctp', sources,
-    dependencies: dependencies,
-    include_directories: include_dirs,
-    install: true,
-    version: meson.project_version())
+if compiler.get_id() == 'msvc' and get_option('default_library') == 'shared'
+    # Needed by usrsctp_def
+    find_program('dumpbin')
+
+    usrsctp_static = static_library('usrsctp-static', sources,
+        dependencies: dependencies,
+        include_directories: include_dirs)
+
+   usrsctp_def = custom_target('usrsctp.def',
+        command: [find_program('gen-def.py'), '@INPUT@'],
+        input: usrsctp_static,
+        output: 'usrsctp.def',
+        capture: true)
+
+    usrsctp = shared_library('usrsctp',
+        link_whole: usrsctp_static,
+        dependencies: dependencies,
+        vs_module_defs: usrsctp_def,
+        install: true,
+        version: meson.project_version())
+else
+    usrsctp = library('usrsctp', sources,
+        dependencies: dependencies,
+        include_directories: include_dirs,
+        install: true,
+        version: meson.project_version())
+endif
 
 # Declare dependency
 usrsctp_dep = declare_dependency(

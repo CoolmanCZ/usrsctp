@@ -39,6 +39,7 @@
 #include <netinet/sctp_sysctl.h>
 #include <netinet/sctp_input.h>
 #include <netinet/sctp_peeloff.h>
+#include <netinet/sctp_callout.h>
 #include <netinet/sctp_crc32.h>
 #ifdef INET6
 #include <netinet6/sctp6_var.h>
@@ -81,11 +82,7 @@ extern int sctp_sosend(struct socket *so, struct sockaddr *addr, struct uio *uio
 extern int sctp_attach(struct socket *so, int proto, uint32_t vrf_id);
 extern int sctpconn_attach(struct socket *so, int proto, uint32_t vrf_id);
 
-void
-usrsctp_init(uint16_t port,
-             int (*conn_output)(void *addr, void *buffer, size_t length, uint8_t tos, uint8_t set_df),
-             void (*debug_printf)(const char *format, ...))
-{
+static void init_sync(void) {
 #if defined(__Userspace_os_Windows)
 #if defined(INET) || defined(INET6)
 	WSADATA wsaData;
@@ -108,7 +105,25 @@ usrsctp_init(uint16_t port,
 	pthread_mutexattr_destroy(&mutex_attr);
 	pthread_cond_init(&accept_cond, NULL);
 #endif
-	sctp_init(port, conn_output, debug_printf);
+}
+
+void
+usrsctp_init(uint16_t port,
+             int (*conn_output)(void *addr, void *buffer, size_t length, uint8_t tos, uint8_t set_df),
+             void (*debug_printf)(const char *format, ...))
+{
+	init_sync();
+	sctp_init(port, conn_output, debug_printf, 1);
+}
+
+
+void
+usrsctp_init_nothreads(uint16_t port,
+		       int (*conn_output)(void *addr, void *buffer, size_t length, uint8_t tos, uint8_t set_df),
+		       void (*debug_printf)(const char *format, ...))
+{
+	init_sync();
+	sctp_init(port, conn_output, debug_printf, 0);
 }
 
 
@@ -1568,8 +1583,6 @@ sowakeup(struct socket *so, struct sockbuf *sb)
 #endif
 	}
 	SOCKBUF_UNLOCK(sb);
-	/*__Userspace__ what todo about so_upcall?*/
-
 }
 #else /* kernel version for reference */
 /*
@@ -2410,6 +2423,20 @@ usrsctp_getsockopt(struct socket *so, int level, int option_name,
 				*option_len = (socklen_t)sizeof(struct linger);
 				return (0);
 			}
+			break;
+		case SO_ERROR:
+			if (*option_len < (socklen_t)sizeof(int)) {
+				errno = EINVAL;
+				return (-1);
+			} else {
+				int *intval;
+
+				intval = (int *)option_value;
+				*intval = so->so_error;
+				*option_len = (socklen_t)sizeof(int);
+				return (0);
+			}
+			break;
 		default:
 			errno = EINVAL;
 			return (-1);
@@ -3503,6 +3530,11 @@ usrsctp_conninput(void *addr, const void *buffer, size_t length, uint8_t ecn_bit
 		sctp_m_freem(m);
 	}
 	return;
+}
+
+void usrsctp_handle_timers(uint32_t delta)
+{
+	sctp_handle_tick(delta);
 }
 
 int
