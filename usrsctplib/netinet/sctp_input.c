@@ -34,7 +34,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_input.c 359195 2020-03-21 16:12:19Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_input.c 360209 2020-04-22 21:22:33Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -2182,7 +2182,7 @@ sctp_process_cookie_new(struct mbuf *m, int iphlen, int offset,
 	int init_offset, initack_offset, initack_limit;
 	int retval;
 	int error = 0;
-	uint8_t auth_chunk_buf[SCTP_PARAM_BUFFER_SIZE];
+	uint8_t auth_chunk_buf[SCTP_CHUNK_BUFFER_SIZE];
 #if defined(__APPLE__) || defined(SCTP_SO_LOCK_TESTING)
 	struct socket *so;
 
@@ -2377,8 +2377,11 @@ sctp_process_cookie_new(struct mbuf *m, int iphlen, int offset,
 	if (auth_skipped) {
 		struct sctp_auth_chunk *auth;
 
-		auth = (struct sctp_auth_chunk *)
-		    sctp_m_getptr(m, auth_offset, auth_len, auth_chunk_buf);
+		if (auth_len <= SCTP_CHUNK_BUFFER_SIZE) {
+			auth = (struct sctp_auth_chunk *)sctp_m_getptr(m, auth_offset, auth_len, auth_chunk_buf);
+		} else {
+			auth = NULL;
+		}
 		if ((auth == NULL) || sctp_handle_auth(stcb, auth, m, auth_offset)) {
 			/* auth HMAC failed, dump the assoc and packet */
 			SCTPDBG(SCTP_DEBUG_AUTH1,
@@ -2724,7 +2727,7 @@ sctp_handle_cookie_echo(struct mbuf *m, int iphlen, int offset,
 	 */
 	(void)SCTP_GETTIME_TIMEVAL(&now);
 	/* Expire time is in Ticks, so we convert to seconds */
-	time_expires.tv_sec = cookie->time_entered.tv_sec + TICKS_TO_SEC(cookie->cookie_life);
+	time_expires.tv_sec = cookie->time_entered.tv_sec + sctp_ticks_to_secs(cookie->cookie_life);
 	time_expires.tv_usec = cookie->time_entered.tv_usec;
 #ifndef __FreeBSD__
 	if (timercmp(&now, &time_expires, >))
@@ -4846,11 +4849,13 @@ sctp_process_control(struct mbuf *m, int iphlen, int *offset, int length,
 			if (auth_skipped && (stcb != NULL)) {
 				struct sctp_auth_chunk *auth;
 
-				auth = (struct sctp_auth_chunk *)
-					sctp_m_getptr(m, auth_offset,
-						      auth_len, chunk_buf);
-				got_auth = 1;
-				auth_skipped = 0;
+				if (auth_len <= SCTP_CHUNK_BUFFER_SIZE) {
+					auth = (struct sctp_auth_chunk *)sctp_m_getptr(m, auth_offset, auth_len, chunk_buf);
+					got_auth = 1;
+					auth_skipped = 0;
+				} else {
+					auth = NULL;
+				}
 				if ((auth == NULL) || sctp_handle_auth(stcb, auth, m,
 								       auth_offset)) {
 					/* auth HMAC failed so dump it */
