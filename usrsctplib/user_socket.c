@@ -2587,6 +2587,13 @@ usrsctp_set_ulpinfo(struct socket *so, void *ulp_info)
 	return (register_ulp_info(so, ulp_info));
 }
 
+
+int
+usrsctp_get_ulpinfo(struct socket *so, void **pulp_info)
+{
+	return (retrieve_ulp_info(so, pulp_info));
+}
+
 int
 usrsctp_bindx(struct socket *so, struct sockaddr *addrs, int addrcnt, int flags)
 {
@@ -3409,21 +3416,30 @@ usrsctp_dumppacket(const void *buf, size_t len, int outbound)
 	ftime(&tb);
 	localtime_s(&t, &tb.time);
 #if defined(__MINGW32__)
-	snprintf(dump_buf, PREAMBLE_LENGTH + 1, PREAMBLE_FORMAT,
-	            outbound ? 'O' : 'I',
-	            t.tm_hour, t.tm_min, t.tm_sec, (long)(1000 * tb.millitm));
+	if (snprintf(dump_buf, PREAMBLE_LENGTH + 1, PREAMBLE_FORMAT,
+	             outbound ? 'O' : 'I',
+	             t.tm_hour, t.tm_min, t.tm_sec, (long)(1000 * tb.millitm)) < 0) {
+		free(dump_buf);
+		return (NULL);
+	}
 #else
-	_snprintf_s(dump_buf, PREAMBLE_LENGTH + 1, PREAMBLE_LENGTH, PREAMBLE_FORMAT,
-	            outbound ? 'O' : 'I',
-	            t.tm_hour, t.tm_min, t.tm_sec, (long)(1000 * tb.millitm));
+	if (_snprintf_s(dump_buf, PREAMBLE_LENGTH + 1, PREAMBLE_LENGTH, PREAMBLE_FORMAT,
+	                outbound ? 'O' : 'I',
+	                t.tm_hour, t.tm_min, t.tm_sec, (long)(1000 * tb.millitm)) < 0) {
+		free(dump_buf);
+		return (NULL);
+	}
 #endif
 #else
 	gettimeofday(&tv, NULL);
 	sec = (time_t)tv.tv_sec;
 	localtime_r((const time_t *)&sec, &t);
-	snprintf(dump_buf, PREAMBLE_LENGTH + 1, PREAMBLE_FORMAT,
-	         outbound ? 'O' : 'I',
-	         t.tm_hour, t.tm_min, t.tm_sec, (long)tv.tv_usec);
+	if (snprintf(dump_buf, PREAMBLE_LENGTH + 1, PREAMBLE_FORMAT,
+	             outbound ? 'O' : 'I',
+	             t.tm_hour, t.tm_min, t.tm_sec, (long)tv.tv_usec) < 0) {
+		free(dump_buf);
+		return (NULL);
+	}
 #endif
 	pos += PREAMBLE_LENGTH;
 #if defined(_WIN32) && !defined(__MINGW32__)
@@ -3531,9 +3547,9 @@ usrsctp_conninput(void *addr, const void *buffer, size_t length, uint8_t ecn_bit
 	return;
 }
 
-void usrsctp_handle_timers(uint32_t delta)
+void usrsctp_handle_timers(uint32_t elapsed_milliseconds)
 {
-	sctp_handle_tick(delta);
+	sctp_handle_tick(sctp_msecs_to_ticks(elapsed_milliseconds));
 }
 
 int

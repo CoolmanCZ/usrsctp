@@ -293,7 +293,7 @@ main(int argc, char *argv[])
 #ifdef _WIN32
 	SOCKET fd_c, fd_s;
 #else
-	int fd_c, fd_s;
+	int fd_c, fd_s, rc;
 #endif
 	struct socket *s_c, *s_s, *s_l;
 #ifdef _WIN32
@@ -318,7 +318,7 @@ main(int argc, char *argv[])
 
 #ifdef _WIN32
 	if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
-		printf("WSAStartup failed\n");
+		fprintf(stderr, "WSAStartup failed\n");
 		exit (EXIT_FAILURE);
 	}
 #endif
@@ -327,11 +327,11 @@ main(int argc, char *argv[])
 	/* set up a connected UDP socket */
 #ifdef _WIN32
 	if ((fd_c = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET) {
-		printf("socket() failed with error: %d\n", WSAGetLastError());
+		fprintf(stderr, "socket() failed with error: %d\n", WSAGetLastError());
 		exit(EXIT_FAILURE);
 	}
 	if ((fd_s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET) {
-		printf("socket() failed with error: %d\n", WSAGetLastError());
+		fprintf(stderr, "socket() failed with error: %d\n", WSAGetLastError());
 		exit(EXIT_FAILURE);
 	}
 #else
@@ -360,11 +360,11 @@ main(int argc, char *argv[])
 	sin_s.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 #ifdef _WIN32
 	if (bind(fd_c, (struct sockaddr *)&sin_c, sizeof(struct sockaddr_in)) == SOCKET_ERROR) {
-		printf("bind() failed with error: %d\n", WSAGetLastError());
+		fprintf(stderr, "bind() failed with error: %d\n", WSAGetLastError());
 		exit(EXIT_FAILURE);
 	}
 	if (bind(fd_s, (struct sockaddr *)&sin_s, sizeof(struct sockaddr_in)) == SOCKET_ERROR) {
-		printf("bind() failed with error: %d\n", WSAGetLastError());
+		fprintf(stderr, "bind() failed with error: %d\n", WSAGetLastError());
 		exit(EXIT_FAILURE);
 	}
 #else
@@ -379,11 +379,11 @@ main(int argc, char *argv[])
 #endif
 #ifdef _WIN32
 	if (connect(fd_c, (struct sockaddr *)&sin_s, sizeof(struct sockaddr_in)) == SOCKET_ERROR) {
-		printf("connect() failed with error: %d\n", WSAGetLastError());
+		fprintf(stderr, "connect() failed with error: %d\n", WSAGetLastError());
 		exit(EXIT_FAILURE);
 	}
 	if (connect(fd_s, (struct sockaddr *)&sin_c, sizeof(struct sockaddr_in)) == SOCKET_ERROR) {
-		printf("connect() failed with error: %d\n", WSAGetLastError());
+		fprintf(stderr, "connect() failed with error: %d\n", WSAGetLastError());
 		exit(EXIT_FAILURE);
 	}
 #else
@@ -397,16 +397,22 @@ main(int argc, char *argv[])
 	}
 #endif
 #ifdef _WIN32
-	tid_c = CreateThread(NULL, 0, &handle_packets, (void *)&fd_c, 0, NULL);
-	tid_s = CreateThread(NULL, 0, &handle_packets, (void *)&fd_s, 0, NULL);
+	if ((tid_c = CreateThread(NULL, 0, &handle_packets, (void *)&fd_c, 0, NULL)) == NULL) {
+		fprintf(stderr, "CreateThread() failed with error: %d\n", GetLastError());
+		exit(EXIT_FAILURE);
+	}
+	if ((tid_s = CreateThread(NULL, 0, &handle_packets, (void *)&fd_s, 0, NULL)) == NULL) {
+		fprintf(stderr, "CreateThread() failed with error: %d\n", GetLastError());
+		exit(EXIT_FAILURE);
+	}
 #else
-	if (pthread_create(&tid_c, NULL, &handle_packets, (void *)&fd_c)) {
-		perror("pthread_create tid_c");
+	if ((rc = pthread_create(&tid_c, NULL, &handle_packets, (void *)&fd_c)) != 0) {
+		fprintf(stderr, "pthread_create tid_c: %s\n", strerror(rc));
 		exit(EXIT_FAILURE);
 	}
 
-	if (pthread_create(&tid_s, NULL, &handle_packets, (void *)&fd_s)) {
-		perror("pthread_create tid_s");
+	if ((rc = pthread_create(&tid_s, NULL, &handle_packets, (void *)&fd_s))  != 0) {
+		fprintf(stderr, "pthread_create tid_s: %s\n", strerror(rc));
 		exit(EXIT_FAILURE);
 	};
 #endif
@@ -539,11 +545,11 @@ main(int argc, char *argv[])
 	TerminateThread(tid_s, 0);
 	WaitForSingleObject(tid_s, INFINITE);
 	if (closesocket(fd_c) == SOCKET_ERROR) {
-		printf("closesocket() failed with error: %d\n", WSAGetLastError());
+		fprintf(stderr, "closesocket() failed with error: %d\n", WSAGetLastError());
 		exit(EXIT_FAILURE);
 	}
 	if (closesocket(fd_s) == SOCKET_ERROR) {
-		printf("closesocket() failed with error: %d\n", WSAGetLastError());
+		fprintf(stderr, "closesocket() failed with error: %d\n", WSAGetLastError());
 		exit(EXIT_FAILURE);
 	}
 	WSACleanup();

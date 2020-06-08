@@ -514,10 +514,6 @@ struct sctp_inpcb {
 	 * they are candidates with sctp_sendm for
 	 * de-supporting.
 	 */
-#ifdef __Panda__
-	pakhandle_type pak_to_read;
-	pakhandle_type pak_to_read_sendq;
-#endif
 	struct mbuf *pkt, *pkt_last;
 	struct mbuf *control;
 #if !(defined(__FreeBSD__) || defined(__APPLE__) || defined(__Windows__) || defined(__Userspace__))
@@ -614,6 +610,7 @@ int register_recv_cb (struct socket *,
                               struct sctp_rcvinfo, int, void *));
 int register_send_cb (struct socket *, uint32_t, int (*)(struct socket *, uint32_t));
 int register_ulp_info (struct socket *, void *);
+int retrieve_ulp_info (struct socket *, void **);
 
 #endif
 struct sctp_tcb {

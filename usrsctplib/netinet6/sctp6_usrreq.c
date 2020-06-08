@@ -34,7 +34,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet6/sctp6_usrreq.c 358083 2020-02-18 21:25:17Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet6/sctp6_usrreq.c 361895 2020-06-07 14:39:20Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -65,7 +65,7 @@ __FBSDID("$FreeBSD: head/sys/netinet6/sctp6_usrreq.c 358083 2020-02-18 21:25:17Z
 #if defined(__APPLE__)
 #define APPLE_FILE_NO 9
 #endif
-#if defined(__Panda__) || defined(__Userspace__)
+#if defined(__Userspace__)
 int ip6_v6only=0;
 #endif
 #if defined(__Userspace__)
@@ -132,8 +132,6 @@ in6_sin_2_v4mapsin6(const struct sockaddr_in *sin, struct sockaddr_in6 *sin6)
 int
 #if defined(__APPLE__) || defined(__FreeBSD__)
 sctp6_input_with_port(struct mbuf **i_pak, int *offp, uint16_t port)
-#elif defined( __Panda__)
-sctp6_input(pakhandle_type *i_pak)
 #else
 sctp6_input(struct mbuf **i_pak, int *offp, int proto)
 #endif
@@ -157,21 +155,12 @@ sctp6_input(struct mbuf **i_pak, int *offp, int proto)
 	uint16_t port = 0;
 #endif
 
-#if defined(__Panda__)
-	/* This is Evil, but its the only way to make panda work right. */
-	iphlen = sizeof(struct ip6_hdr);
-#else
 	iphlen = *offp;
-#endif
 	if (SCTP_GET_PKT_VRFID(*i_pak, vrf_id)) {
 		SCTP_RELEASE_PKT(*i_pak);
 		return (IPPROTO_DONE);
 	}
 	m = SCTP_HEADER_TO_CHAIN(*i_pak);
-#ifdef __Panda__
-	SCTP_DETACH_HEADER_FROM_CHAIN(*i_pak);
-	(void)SCTP_RELEASE_HEADER(*i_pak);
-#endif
 #ifdef SCTP_MBUF_LOGGING
 	/* Log in any input mbufs */
 	if (SCTP_BASE_SYSCTL(sctp_logging_level) & SCTP_MBUF_LOGGING_ENABLE) {
@@ -344,7 +333,7 @@ sctp6_notify(struct sctp_inpcb *inp,
              uint8_t icmp6_code,
              uint32_t next_mtu)
 {
-#if defined(__APPLE__) || defined(SCTP_SO_LOCK_TESTING)
+#if defined(__APPLE__)
 	struct socket *so;
 #endif
 	int timer_stopped;
@@ -370,7 +359,7 @@ sctp6_notify(struct sctp_inpcb *inp,
 		/* Treat it like an ABORT. */
 		if (icmp6_code == ICMP6_PARAMPROB_NEXTHEADER) {
 			sctp_abort_notification(stcb, 1, 0, NULL, SCTP_SO_NOT_LOCKED);
-#if defined(__APPLE__) || defined(SCTP_SO_LOCK_TESTING)
+#if defined(__APPLE__)
 			so = SCTP_INP_SO(inp);
 			atomic_add_int(&stcb->asoc.refcnt, 1);
 			SCTP_TCB_UNLOCK(stcb);
@@ -380,7 +369,7 @@ sctp6_notify(struct sctp_inpcb *inp,
 #endif
 			(void)sctp_free_assoc(inp, stcb, SCTP_NORMAL_PROC,
 					      SCTP_FROM_SCTP_USRREQ + SCTP_LOC_2);
-#if defined(__APPLE__) || defined(SCTP_SO_LOCK_TESTING)
+#if defined(__APPLE__)
 			SCTP_SOCKET_UNLOCK(so, 1);
 #endif
 		} else {
@@ -618,7 +607,7 @@ sctp6_ctlinput(int cmd, struct sockaddr *pktdst, void *d)
  * this routine can probably be collasped into the one in sctp_userreq.c
  * since they do the same thing and now we lookup with a sockaddr
  */
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__)
 static int
 sctp6_getcred(SYSCTL_HANDLER_ARGS)
 {
@@ -630,11 +619,7 @@ sctp6_getcred(SYSCTL_HANDLER_ARGS)
 	int error;
 	uint32_t vrf_id;
 
-#if defined(__FreeBSD__) || defined(__APPLE__)
 	vrf_id = SCTP_DEFAULT_VRFID;
-#else
-	vrf_id = panda_get_vrf_from_call(); /* from connectx call? */
-#endif
 
 #if defined(__FreeBSD__) && __FreeBSD_version > 602000
 	error = priv_check(req->td, PRIV_NETINET_GETCRED);
@@ -703,7 +688,7 @@ SYSCTL_PROC(_net_inet6_sctp6, OID_AUTO, getcred, CTLTYPE_OPAQUE | CTLFLAG_RW,
 /* This is the same as the sctp_abort() could be made common */
 #if (defined(__FreeBSD__) && __FreeBSD_version > 690000) || defined(__Windows__)
 static void
-#elif defined(__Panda__) || defined(__Userspace__)
+#elif defined(__Userspace__)
 int
 #else
 static int
@@ -770,7 +755,7 @@ sctp6_abort(struct socket *so)
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 static int
 sctp6_attach(struct socket *so, int proto SCTP_UNUSED, struct thread *p SCTP_UNUSED)
-#elif defined(__Panda__) || defined(__Userspace__)
+#elif defined(__Userspace__)
 int
 sctp6_attach(struct socket *so, int proto SCTP_UNUSED, uint32_t vrf_id)
 #elif defined(__Windows__)
@@ -783,7 +768,7 @@ sctp6_attach(struct socket *so, int proto SCTP_UNUSED, struct proc *p SCTP_UNUSE
 {
 	int error;
 	struct sctp_inpcb *inp;
-#if !defined(__Panda__) && !defined(__Userspace__)
+#if !defined(__Userspace__)
 	uint32_t vrf_id = SCTP_DEFAULT_VRFID;
 #endif
 
@@ -810,10 +795,8 @@ sctp6_attach(struct socket *so, int proto SCTP_UNUSED, struct proc *p SCTP_UNUSE
 #else
 	inp->inp_vflag |= INP_IPV6;
 #endif
-#if !defined(__Panda__)
 	inp->ip_inp.inp.in6p_hops = -1;	/* use kernel default */
 	inp->ip_inp.inp.in6p_cksum = -1;	/* just to be sure */
-#endif
 #ifdef INET
 	/*
 	 * XXX: ugly!! IPv4 TTL initialization is necessary for an IPv6
@@ -834,7 +817,7 @@ sctp6_bind(struct socket *so, struct sockaddr *addr, struct thread *p)
 static int
 sctp6_bind(struct socket *so, struct sockaddr *addr, struct proc *p)
 {
-#elif defined(__Panda__) || defined(__Userspace__)
+#elif defined(__Userspace__)
 int
 sctp6_bind(struct socket *so, struct sockaddr *addr, void * p)
 {
@@ -995,9 +978,7 @@ sctp6_close(struct socket *so)
 /* This could be made common with sctp_detach() since they are identical */
 #else
 
-#if !defined(__Panda__)
 static
-#endif
 int
 sctp6_detach(struct socket *so)
 {
@@ -1011,7 +992,7 @@ sctp6_detach(struct socket *so)
 
 #endif
 
-#if !defined(__Panda__) && !defined(__Userspace__)
+#if !defined(__Userspace__)
 static
 #endif
 int
@@ -1032,7 +1013,7 @@ sctp_sendm(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
 
 #endif
 
-#if !defined(__Panda__) && !defined(__Windows__) && !defined(__Userspace__)
+#if !defined(__Windows__) && !defined(__Userspace__)
 #if defined(__FreeBSD__) && __FreeBSD_version >= 500000
 static int
 sctp6_send(struct socket *so, int flags, struct mbuf *m, struct sockaddr *addr,
@@ -1169,10 +1150,6 @@ sctp6_connect(struct socket *so, struct sockaddr *addr, struct thread *p)
 #elif defined(__FreeBSD__) || defined(__APPLE__)
 static int
 sctp6_connect(struct socket *so, struct sockaddr *addr, struct proc *p)
-{
-#elif defined(__Panda__)
-int
-sctp6_connect(struct socket *so, struct sockaddr *addr, void *p)
 {
 #elif defined(__Windows__)
 static int
@@ -1348,10 +1325,6 @@ static int
 sctp6_getaddr(struct socket *so, struct sockaddr **addr)
 {
 	struct sockaddr_in6 *sin6;
-#elif defined(__Panda__)
-sctp6_getaddr(struct socket *so, struct sockaddr *addr)
-{
-	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addr;
 #else
 sctp6_getaddr(struct socket *so, struct mbuf *nam)
 {
@@ -1361,9 +1334,9 @@ sctp6_getaddr(struct socket *so, struct mbuf *nam)
 	uint32_t vrf_id;
 	struct sctp_ifa *sctp_ifa;
 
-#ifdef SCTP_KAME
+#if defined(SCTP_KAME) && defined(SCTP_EMBEDDED_V6_SCOPE)
 	int error;
-#endif /* SCTP_KAME */
+#endif
 
 	/*
 	 * Do the malloc first in case it blocks.
@@ -1372,8 +1345,6 @@ sctp6_getaddr(struct socket *so, struct mbuf *nam)
 	SCTP_MALLOC_SONAME(sin6, struct sockaddr_in6 *, sizeof(*sin6));
 	if (sin6 == NULL)
 		return (ENOMEM);
-#elif defined(__Panda__)
-	memset(sin6, 0, sizeof(*sin6));
 #else
 	SCTP_BUF_LEN(nam) = sizeof(*sin6);
 	memset(sin6, 0, sizeof(*sin6));
@@ -1491,10 +1462,6 @@ static int
 sctp6_peeraddr(struct socket *so, struct sockaddr **addr)
 {
 	struct sockaddr_in6 *sin6;
-#elif defined(__Panda__)
-sctp6_peeraddr(struct socket *so, struct sockaddr *addr)
-{
-	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addr;
 #else
 sctp6_peeraddr(struct socket *so, struct mbuf *nam)
 {
@@ -1514,8 +1481,6 @@ sctp6_peeraddr(struct socket *so, struct mbuf *nam)
 	SCTP_MALLOC_SONAME(sin6, struct sockaddr_in6 *, sizeof *sin6);
 	if (sin6 == NULL)
 		return (ENOMEM);
-#elif defined(__Panda__)
-	memset(sin6, 0, sizeof(*sin6));
 #else
 	SCTP_BUF_LEN(nam) = sizeof(*sin6);
 	memset(sin6, 0, sizeof(*sin6));
@@ -1590,11 +1555,6 @@ sctp6_peeraddr(struct socket *so, struct mbuf *nam)
 static int
 sctp6_in6getaddr(struct socket *so, struct sockaddr **nam)
 {
-#elif defined(__Panda__)
-int
-sctp6_in6getaddr(struct socket *so, struct sockaddr *nam, uint32_t *namelen)
-{
-	struct sockaddr *addr = nam;
 #elif defined(__Userspace__)
 int
 sctp6_in6getaddr(struct socket *so, struct mbuf *nam)
@@ -1649,9 +1609,6 @@ sctp6_in6getaddr(struct socket *so, struct mbuf *nam)
 #endif
 	}
 #endif
-#if defined(__Panda__)
-	*namelen = nam->sa_len;
-#endif
 	return (error);
 }
 
@@ -1660,11 +1617,6 @@ sctp6_in6getaddr(struct socket *so, struct mbuf *nam)
 static int
 sctp6_getpeeraddr(struct socket *so, struct sockaddr **nam)
 {
-#elif defined(__Panda__)
-int
-sctp6_getpeeraddr(struct socket *so, struct sockaddr *nam, uint32_t *namelen)
-{
-	struct sockaddr *addr = (struct sockaddr *)nam;
 #elif defined(__Userspace__)
 int
 sctp6_getpeeraddr(struct socket *so, struct mbuf *nam)
@@ -1720,9 +1672,6 @@ sctp6_getpeeraddr(struct socket *so, struct mbuf *nam)
 		memcpy(addr, &sin6, sizeof(struct sockaddr_in6));
 #endif
 	}
-#endif
-#if defined(__Panda__)
-	*namelen = nam->sa_len;
 #endif
 	return (error);
 }
@@ -1801,7 +1750,7 @@ struct pr_usrreqs sctp6_usrreqs = {
 #endif
 };
 
-#elif !defined(__Panda__) && !defined(__Userspace__)
+#elif !defined(__Userspace__)
 int
 sctp6_usrreq(so, req, m, nam, control, p)
 	struct socket *so;
@@ -1809,22 +1758,22 @@ sctp6_usrreq(so, req, m, nam, control, p)
 	struct mbuf *m, *nam, *control;
 	struct proc *p;
 {
-	int s;
-	int error = 0;
+	int error;
 	int family;
-	uint32_t vrf_id;
+
 	family = so->so_proto->pr_domain->dom_family;
 
 	if (req == PRU_CONTROL) {
 		switch (family) {
 		case PF_INET:
 			error = in_control(so, (long)m, (caddr_t)nam,
-			    (struct ifnet *)control
-			    );
+			    (struct ifnet *)control );
+			break;
 #ifdef INET6
 		case PF_INET6:
 			error = in6_control(so, (long)m, (caddr_t)nam,
 			    (struct ifnet *)control, p);
+			break;
 #endif
 		default:
 			SCTP_LTRACE_ERR_RET(NULL, NULL, NULL, SCTP_FROM_SCTP6_USRREQ, EAFNOSUPPORT);
@@ -1908,6 +1857,7 @@ sctp6_usrreq(so, req, m, nam, control, p)
 		error = 0;
 		break;
 	default:
+		error = 0;
 		break;
 	}
 	return (error);

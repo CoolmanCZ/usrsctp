@@ -34,7 +34,7 @@
 
 #ifdef __FreeBSD__
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: head/sys/netinet/sctp_pcb.c 359405 2020-03-28 20:25:45Z tuexen $");
+__FBSDID("$FreeBSD: head/sys/netinet/sctp_pcb.c 361877 2020-06-06 21:26:34Z tuexen $");
 #endif
 
 #include <netinet/sctp_os.h>
@@ -606,9 +606,9 @@ sctp_add_addr_to_vrf(uint32_t vrf_id, void *ifn, uint32_t ifn_index,
 		atomic_add_int(&vrf->refcount, 1);
 		sctp_ifnp->ifn_mtu = SCTP_GATHER_MTU_FROM_IFN_INFO(ifn, ifn_index, addr->sa_family);
 		if (if_name != NULL) {
-			snprintf(sctp_ifnp->ifn_name, SCTP_IFNAMSIZ, "%s", if_name);
+			SCTP_SNPRINTF(sctp_ifnp->ifn_name, SCTP_IFNAMSIZ, "%s", if_name);
 		} else {
-			snprintf(sctp_ifnp->ifn_name, SCTP_IFNAMSIZ, "%s", "unknown");
+			SCTP_SNPRINTF(sctp_ifnp->ifn_name, SCTP_IFNAMSIZ, "%s", "unknown");
 		}
 		hash_ifn_head = &SCTP_BASE_INFO(vrf_ifn_hash)[(ifn_index & SCTP_BASE_INFO(vrf_ifn_hashmark))];
 		LIST_INIT(&sctp_ifnp->ifalist);
@@ -838,8 +838,7 @@ sctp_del_addr_from_vrf(uint32_t vrf_id, struct sockaddr *addr,
 			int valid = 0;
 			/*-
 			 * The name has priority over the ifn_index
-			 * if its given. We do this especially for
-			 * panda who might recycle indexes fast.
+			 * if its given.
 			 */
 			if (if_name) {
 				if (strncmp(if_name, sctp_ifap->ifn_p->ifn_name, SCTP_IFNAMSIZ) == 0) {
@@ -2878,14 +2877,6 @@ sctp_inpcb_alloc(struct socket *so, uint32_t vrf_id)
 		SOCK_LOCK(so);
 		SCTP_CLEAR_SO_NBIO(so);
 		SOCK_UNLOCK(so);
-#if defined(__Panda__)
-	} else if (SCTP_SO_TYPE(so) == SOCK_FASTSEQPACKET) {
-		inp->sctp_flags = (SCTP_PCB_FLAGS_UDPTYPE |
-		    SCTP_PCB_FLAGS_UNBOUND);
-	} else if (SCTP_SO_TYPE(so) == SOCK_FASTSTREAM) {
-		inp->sctp_flags = (SCTP_PCB_FLAGS_TCPTYPE |
-		    SCTP_PCB_FLAGS_UNBOUND);
-#endif
 	} else {
 		/*
 		 * unsupported socket type (RAW, etc)- in case we missed it
@@ -3465,15 +3456,6 @@ sctp_inpcb_bind(struct socket *so, struct sockaddr *addr,
 				SCTP_INP_INFO_WUNLOCK();
 				return (error);
 			}
-#if defined(__Panda__)
-			if (!SCTP_IS_PRIVILEDGED(so)) {
-				SCTP_INP_DECR_REF(inp);
-				SCTP_INP_WUNLOCK(inp);
-				SCTP_INP_INFO_WUNLOCK();
-				SCTP_LTRACE_ERR_RET(inp, NULL, NULL, SCTP_FROM_SCTP_PCB, EACCES);
-				return (EACCES);
-			}
-#endif
 		}
 #endif /* __Windows__ */
 		SCTP_INP_WUNLOCK(inp);
@@ -3738,7 +3720,7 @@ sctp_inpcb_bind(struct socket *so, struct sockaddr *addr,
 		} else {
 			/* Note for BSD we hit here always other
 			 * O/S's will pass things in via the
-			 * sctp_ifap argument (Panda).
+			 * sctp_ifap argument.
 			 */
 			ifa = sctp_find_ifa_by_addr(&store.sa,
 						    vrf_id, SCTP_ADDR_NOT_LOCKED);
@@ -3888,7 +3870,7 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate, int from)
 	struct socket *so;
 	int being_refed = 0;
 	struct sctp_queued_to_read *sq, *nsq;
-#if !defined(__Panda__) && !defined(__Userspace__)
+#if !defined(__Userspace__)
 #if !defined(__FreeBSD__) || __FreeBSD_version < 500000
 	sctp_rtentry_t *rt;
 #endif
@@ -4186,7 +4168,7 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate, int from)
 	sctp_log_closing(inp, NULL, 5);
 #endif
 
-#if !(defined(__Panda__) || defined(__Windows__) || defined(__Userspace__))
+#if !(defined(__Windows__) || defined(__Userspace__))
 #if !defined(__FreeBSD__) || __FreeBSD_version < 500000
 	rt = ip_pcb->inp_route.ro_rt;
 #endif
@@ -4222,14 +4204,12 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate, int from)
 	 * macro here since le_next will get freed as part of the
 	 * sctp_free_assoc() call.
 	 */
-#ifndef __Panda__
 	if (ip_pcb->inp_options) {
 		(void)sctp_m_free(ip_pcb->inp_options);
 		ip_pcb->inp_options = 0;
 	}
-#endif
 
-#if !(defined(__Panda__) || defined(__Windows__) || defined(__Userspace__))
+#if !(defined(__Windows__) || defined(__Userspace__))
 #if !defined(__FreeBSD__) || __FreeBSD_version < 500000
 	if (rt) {
 		RTFREE(rt);
@@ -4247,7 +4227,7 @@ sctp_inpcb_free(struct sctp_inpcb *inp, int immediate, int from)
 #endif
 
 #ifdef INET6
-#if !(defined(__Panda__) || defined(__Windows__) || defined(__Userspace__))
+#if !(defined(__Windows__) || defined(__Userspace__))
 #if defined(__FreeBSD__) || defined(__APPLE__)
 	if (ip_pcb->inp_vflag & INP_IPV6) {
 #else
@@ -4344,9 +4324,6 @@ sctp_findnet(struct sctp_tcb *stcb, struct sockaddr *addr)
 int
 sctp_is_address_on_local_host(struct sockaddr *addr, uint32_t vrf_id)
 {
-#ifdef __Panda__
-	return (0);
-#else
 	struct sctp_ifa *sctp_ifa;
 	sctp_ifa = sctp_find_ifa_by_addr(addr, vrf_id, SCTP_ADDR_NOT_LOCKED);
 	if (sctp_ifa) {
@@ -4354,7 +4331,6 @@ sctp_is_address_on_local_host(struct sockaddr *addr, uint32_t vrf_id)
 	} else {
 		return (0);
 	}
-#endif
 }
 
 /*
@@ -4670,18 +4646,22 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 			} else {
 				imtu = 0;
 			}
-			rmtu = SCTP_GATHER_MTU_FROM_ROUTE(net->ro._s_addr, &net->ro._l_addr.sa, net->ro.ro_rt);
 #if defined(__FreeBSD__)
+			rmtu = SCTP_GATHER_MTU_FROM_ROUTE(net->ro._s_addr, &net->ro._l_addr.sa, net->ro.ro_nh);
 			hcmtu = sctp_hc_get_mtu(&net->ro._l_addr, stcb->sctp_ep->fibnum);
 #else
+			rmtu = SCTP_GATHER_MTU_FROM_ROUTE(net->ro._s_addr, &net->ro._l_addr.sa, net->ro.ro_rt);
 			hcmtu = 0;
 #endif
 			net->mtu = sctp_min_mtu(hcmtu, rmtu, imtu);
+#if defined(__FreeBSD__)
+#else
 			if (rmtu == 0) {
 				/* Start things off to match mtu of interface please. */
 				SCTP_SET_MTU_OF_ROUTE(&net->ro._l_addr.sa,
 				                      net->ro.ro_rt, net->mtu);
 			}
+#endif
 		}
 	}
 #endif
@@ -4781,26 +4761,36 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 		*netp = net;
 	}
 	netfirst = TAILQ_FIRST(&stcb->asoc.nets);
+#if defined(__FreeBSD__)
+	if (net->ro.ro_nh == NULL) {
+#else
 	if (net->ro.ro_rt == NULL) {
+#endif
 		/* Since we have no route put it at the back */
 		TAILQ_INSERT_TAIL(&stcb->asoc.nets, net, sctp_next);
 	} else if (netfirst == NULL) {
 		/* We are the first one in the pool. */
 		TAILQ_INSERT_HEAD(&stcb->asoc.nets, net, sctp_next);
+#if defined(__FreeBSD__)
+	} else if (netfirst->ro.ro_nh == NULL) {
+#else
 	} else if (netfirst->ro.ro_rt == NULL) {
+#endif
 		/*
 		 * First one has NO route. Place this one ahead of the first
 		 * one.
 		 */
 		TAILQ_INSERT_HEAD(&stcb->asoc.nets, net, sctp_next);
-#ifndef __Panda__
+#if defined(__FreeBSD__)
+	} else if (net->ro.ro_nh->nh_ifp != netfirst->ro.ro_nh->nh_ifp) {
+#else
 	} else if (net->ro.ro_rt->rt_ifp != netfirst->ro.ro_rt->rt_ifp) {
+#endif
 		/*
 		 * This one has a different interface than the one at the
 		 * top of the list. Place it ahead.
 		 */
 		TAILQ_INSERT_HEAD(&stcb->asoc.nets, net, sctp_next);
-#endif
 	} else {
 		/*
 		 * Ok we have the same interface as the first one. Move
@@ -4816,34 +4806,39 @@ sctp_add_remote_addr(struct sctp_tcb *stcb, struct sockaddr *newaddr,
 				/* End of the list */
 				TAILQ_INSERT_TAIL(&stcb->asoc.nets, net, sctp_next);
 				break;
+#if defined(__FreeBSD__)
+			} else if (netlook->ro.ro_nh == NULL) {
+#else
 			} else if (netlook->ro.ro_rt == NULL) {
+#endif
 				/* next one has NO route */
 				TAILQ_INSERT_BEFORE(netfirst, net, sctp_next);
 				break;
-			}
-#ifndef __Panda__
-			else if (netlook->ro.ro_rt->rt_ifp != net->ro.ro_rt->rt_ifp)
+#if defined(__FreeBSD__)
+			} else if (netlook->ro.ro_nh->nh_ifp != net->ro.ro_nh->nh_ifp) {
 #else
-			else
+			} else if (netlook->ro.ro_rt->rt_ifp != net->ro.ro_rt->rt_ifp) {
 #endif
-			{
 				TAILQ_INSERT_AFTER(&stcb->asoc.nets, netlook,
-						   net, sctp_next);
+				                   net, sctp_next);
 				break;
 			}
-#ifndef __Panda__
 			/* Shift forward */
 			netfirst = netlook;
-#endif
 		} while (netlook != NULL);
 	}
 
 	/* got to have a primary set */
 	if (stcb->asoc.primary_destination == 0) {
 		stcb->asoc.primary_destination = net;
+#if defined(__FreeBSD__)
+	} else if ((stcb->asoc.primary_destination->ro.ro_nh == NULL) &&
+	           (net->ro.ro_nh) &&
+#else
 	} else if ((stcb->asoc.primary_destination->ro.ro_rt == NULL) &&
-		    (net->ro.ro_rt) &&
-	    ((net->dest_state & SCTP_ADDR_UNCONFIRMED) == 0)) {
+	           (net->ro.ro_rt) &&
+#endif
+	           ((net->dest_state & SCTP_ADDR_UNCONFIRMED) == 0)) {
 		/* No route to current primary adopt new primary */
 		stcb->asoc.primary_destination = net;
 	}
@@ -5067,15 +5062,7 @@ sctp_aloc_assoc(struct sctp_inpcb *inp, struct sockaddr *firstaddr,
 		 * If you have not performed a bind, then we need to do the
 		 * ephemeral bind for you.
 		 */
-		if ((err = sctp_inpcb_bind(inp->sctp_socket,
-		    (struct sockaddr *)NULL,
-		    (struct sctp_ifa *)NULL,
-#ifndef __Panda__
-					   p
-#else
-					   (struct proc *)NULL
-#endif
-		    ))) {
+		if ((err = sctp_inpcb_bind(inp->sctp_socket, NULL, NULL, p))) {
 			/* bind error, probably perm */
 			*error = err;
 			return (NULL);
@@ -5444,10 +5431,6 @@ sctp_clean_up_stream(struct sctp_tcb *stcb, struct sctp_readhead *rh)
 		}
 	}
 }
-
-#ifdef __Panda__
-void panda_wakeup_socket(struct socket *so);
-#endif
 
 /*-
  * Free the association after un-hashing the remote port. This
@@ -5981,16 +5964,12 @@ sctp_free_assoc(struct sctp_inpcb *inp, struct sctp_tcb *stcb, int from_inpcbfre
 					SCTP_FREE_SHOULD_USE_GRACEFUL_CLOSE,
 					SCTP_CALLED_DIRECTLY_NOCMPSET);
 			SCTP_INP_DECR_REF(inp);
-			goto out_of;
 		} else {
 			/* The socket is still open. */
 			SCTP_INP_DECR_REF(inp);
+			SCTP_INP_RUNLOCK(inp);
 		}
 	}
-	if (from_inpcbfree == SCTP_NORMAL_PROC) {
-		SCTP_INP_RUNLOCK(inp);
-	}
- out_of:
 	/* destroyed the asoc */
 #ifdef SCTP_LOG_CLOSING
 	sctp_log_closing(inp, NULL, 11);
@@ -6273,6 +6252,9 @@ sctp_del_local_addr_ep(struct sctp_inpcb *inp, struct sctp_ifa *ifa)
 			TAILQ_FOREACH(net, &stcb->asoc.nets, sctp_next) {
 				if (net->ro._s_addr == laddr->ifa) {
 					/* Yep, purge src address selected */
+#if defined(__FreeBSD__)
+					RO_NHFREE(&net->ro);
+#else
 					sctp_rtentry_t *rt;
 
 					/* delete this address if cached */
@@ -6281,6 +6263,7 @@ sctp_del_local_addr_ep(struct sctp_inpcb *inp, struct sctp_ifa *ifa)
 						RTFREE(rt);
 						net->ro.ro_rt = NULL;
 					}
+#endif
 					sctp_free_ifa(net->ro._s_addr);
 					net->ro._s_addr = NULL;
 					net->src_addr_selected = 0;
@@ -6786,14 +6769,12 @@ sctp_pcb_init(void)
 	sctp_startup_mcore_threads();
 #endif
 
-#ifndef __Panda__
 	/*
 	 * INIT the default VRF which for BSD is the only one, other O/S's
 	 * may have more. But initially they must start with one and then
 	 * add the VRF's as addresses are added.
 	 */
 	sctp_init_vrf_list(SCTP_DEFAULT_VRF);
-#endif
 #if defined(__FreeBSD__) && __FreeBSD_cc_version >= 1400000
 	if (ip_register_flow_handler(sctp_netisr_hdlr, IPPROTO_SCTP)) {
 		SCTP_PRINTF("***SCTP- Error can't register netisr handler***\n");
@@ -6905,7 +6886,7 @@ retry:
 	 * holding the lock.  We won't find it on the list either and
 	 * continue and free/destroy it.  While holding the lock, spin, to
 	 * avoid the race condition as sctp_iterator_worker() will have to
-	 * wait to re-aquire the lock.
+	 * wait to re-acquire the lock.
 	 */
 	if (sctp_it_ctl.iterator_running != 0 || sctp_it_ctl.cur_it != NULL) {
 		SCTP_IPI_ITERATOR_WQ_UNLOCK();
@@ -7277,8 +7258,8 @@ sctp_load_addresses_from_init(struct sctp_tcb *stcb, struct mbuf *m,
 							char msg[SCTP_DIAG_INFO_LEN];
 
 							/* in setup state we abort this guy */
-							snprintf(msg, sizeof(msg),
-							         "%s:%d at %s", __FILE__, __LINE__, __func__);
+							SCTP_SNPRINTF(msg, sizeof(msg),
+							              "%s:%d at %s", __FILE__, __LINE__, __func__);
 							op_err = sctp_generate_cause(SCTP_BASE_SYSCTL(sctp_diag_info_code),
 							         msg);
 							sctp_abort_an_association(stcb_tmp->sctp_ep,
@@ -7371,8 +7352,8 @@ sctp_load_addresses_from_init(struct sctp_tcb *stcb, struct mbuf *m,
 							char msg[SCTP_DIAG_INFO_LEN];
 
 							/* in setup state we abort this guy */
-							snprintf(msg, sizeof(msg),
-							         "%s:%d at %s", __FILE__, __LINE__, __func__);
+							SCTP_SNPRINTF(msg, sizeof(msg),
+							              "%s:%d at %s", __FILE__, __LINE__, __func__);
 							op_err = sctp_generate_cause(SCTP_BASE_SYSCTL(sctp_diag_info_code),
 							         msg);
 							sctp_abort_an_association(stcb_tmp->sctp_ep,
