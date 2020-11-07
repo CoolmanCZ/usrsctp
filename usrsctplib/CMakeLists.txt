@@ -170,14 +170,9 @@ add_library(usrsctp ${usrsctp_sources} ${usrsctp_headers})
 
 target_include_directories(usrsctp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-if(MINGW)
-    SET (MINGW_IPHLAPI "iphlpapi")
-endif()
-
 if (WIN32)
-	message(STATUS "link library: ws2_32 ${MINGW_IPHLAPI}")
-	target_link_libraries(usrsctp ws2_32 ${MINGW_IPHLAPI})
-	target_link_libraries(usrsctp-static ws2_32 ${MINGW_IPHLAPI})
+	message(STATUS "link library: ws2_32 iphlpapi")
+	target_link_libraries(usrsctp ws2_32 iphlpapi)
 endif ()
 
 set_target_properties(usrsctp PROPERTIES IMPORT_SUFFIX "_import.lib")

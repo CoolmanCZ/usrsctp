@@ -83,16 +83,6 @@ if (sctp_sanitizer_address AND sctp_sanitizer_memory)
 	message(FATAL_ERROR "Can not compile with both sanitizer options")
 endif ()
 
-if (sctp_link_programs_static OR WIN32)
-	set(programs_link_library "usrsctp-static")
-else ()
-	set(programs_link_library "usrsctp")
-endif ()
-
-if (MINGW)
-    set(PROGRAMS_LINK_LIBRARY ${PROGRAMS_LINK_LIBRARY} ws2_32 iphlpapi)
-endif()
-
 #################################################
 # CHECK FOR TYPES AND FUNCTIONS
 #################################################
