@@ -69,7 +69,7 @@ endif ()
 
 option(sctp_werror "Treat warning as error" 1)
 
-option(sctp_link_programs_static "Link example programs static" 0)
+option(sctp_build_shared_lib "Build USRSCTP as shared library" 0)
 
 option(sctp_build_programs "Build example programs" 1)
 
@@ -92,7 +92,6 @@ endif ()
 if (MINGW)
     set(PROGRAMS_LINK_LIBRARY ${PROGRAMS_LINK_LIBRARY} ws2_32 iphlpapi)
 endif()
-
 
 #################################################
 # CHECK FOR TYPES AND FUNCTIONS
